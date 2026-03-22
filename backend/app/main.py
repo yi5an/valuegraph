@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import stocks
+from app.routers import stocks, financial
 
 app = FastAPI(
     title="ValueGraph API",
@@ -20,6 +20,7 @@ app.add_middleware(
 
 # 注册路由
 app.include_router(stocks.router)
+app.include_router(financial.router)
 
 @app.get("/")
 async def root():
