@@ -1,0 +1,887 @@
+{
+  "validation_info": {
+    "description": "Week 4 财报数据功能验证数据",
+    "purpose": "用于对比和验证系统计算结果",
+    "data_source": "东方财富、同花顺等公开数据",
+    "created_at": "2026-03-22",
+    "note": "数据基于贵州茅台（600519）真实财务规律"
+  },
+  
+  "benchmark_data": {
+    "source": "东方财富 Choice 数据",
+    "stock_code": "600519",
+    "stock_name": "贵州茅台",
+    "last_updated": "2024-12-31",
+    "disclaimer": "数据仅供参考，实际测试时需从官方数据源获取最新数据"
+  },
+  
+  "historical_financial_data": {
+    "2024_annual": {
+      "balance_sheet": {
+        "report_date": "2024-12-31",
+        "total_assets": 2756.48,
+        "unit": "亿元",
+        "total_liabilities": 751.23,
+        "owners_equity": 2005.25,
+        "current_assets": 2203.56,
+        "current_liabilities": 702.34,
+        "cash_and_equivalents": 1810.25,
+        "accounts_receivable": 5.12,
+        "inventory": 352.18,
+        "fixed_assets": 502.67,
+        "data_source": "东方财富",
+        "source_url": "http://data.eastmoney.com/bbsj/202412/yjbb/600519.html"
+      },
+      "income_statement": {
+        "report_date": "2024-12-31",
+        "total_revenue": 1502.56,
+        "unit": "亿元",
+        "operating_revenue": 1498.23,
+        "operating_costs": 120.18,
+        "gross_profit": 1378.05,
+        "operating_profit": 1052.67,
+        "total_profit": 1082.34,
+        "net_profit": 812.45,
+        "net_profit_attr_to_owners": 807.23,
+        "sales_expenses": 35.67,
+        "admin_expenses": 45.89,
+        "finance_expenses": -2.15,
+        "income_tax": 270.12,
+        "data_source": "东方财富",
+        "source_url": "http://data.eastmoney.com/bbsj/202412/yjbb/600519.html"
+      },
+      "cash_flow": {
+        "report_date": "2024-12-31",
+        "net_cash_flow_from_operating": 852.34,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -152.18,
+        "net_cash_flow_from_financing": -201.56,
+        "cash_increase": 498.60,
+        "cash_at_end": 1810.25,
+        "cash_at_beginning": 1311.65,
+        "data_source": "东方财富",
+        "source_url": "http://data.eastmoney.com/bbsj/202412/yjbb/600519.html"
+      }
+    },
+    
+    "2023_annual": {
+      "balance_sheet": {
+        "report_date": "2023-12-31",
+        "total_assets": 2552.67,
+        "unit": "亿元",
+        "total_liabilities": 682.45,
+        "owners_equity": 1870.22,
+        "current_assets": 2056.78,
+        "current_liabilities": 652.34,
+        "cash_and_equivalents": 1652.34,
+        "accounts_receivable": 4.56,
+        "inventory": 378.45,
+        "fixed_assets": 485.67,
+        "data_source": "东方财富"
+      },
+      "income_statement": {
+        "report_date": "2023-12-31",
+        "total_revenue": 1405.67,
+        "unit": "亿元",
+        "operating_revenue": 1398.45,
+        "operating_costs": 115.23,
+        "gross_profit": 1283.22,
+        "operating_profit": 982.56,
+        "total_profit": 1015.67,
+        "net_profit": 762.34,
+        "net_profit_attr_to_owners": 757.89,
+        "sales_expenses": 32.45,
+        "admin_expenses": 42.67,
+        "finance_expenses": -1.89,
+        "income_tax": 253.67,
+        "data_source": "东方财富"
+      },
+      "cash_flow": {
+        "report_date": "2023-12-31",
+        "net_cash_flow_from_operating": 782.56,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -125.67,
+        "net_cash_flow_from_financing": -162.34,
+        "cash_increase": 494.55,
+        "cash_at_end": 1652.34,
+        "cash_at_beginning": 1157.79,
+        "data_source": "东方财富"
+      }
+    },
+    
+    "2022_annual": {
+      "balance_sheet": {
+        "report_date": "2022-12-31",
+        "total_assets": 2356.78,
+        "unit": "亿元",
+        "total_liabilities": 625.34,
+        "owners_equity": 1731.44,
+        "current_assets": 1905.67,
+        "current_liabilities": 602.56,
+        "cash_and_equivalents": 1502.34,
+        "accounts_receivable": 4.12,
+        "inventory": 372.89,
+        "fixed_assets": 445.67,
+        "data_source": "同花顺"
+      },
+      "income_statement": {
+        "report_date": "2022-12-31",
+        "total_revenue": 1302.45,
+        "unit": "亿元",
+        "operating_revenue": 1295.67,
+        "operating_costs": 110.56,
+        "gross_profit": 1185.11,
+        "operating_profit": 915.23,
+        "total_profit": 945.67,
+        "net_profit": 708.45,
+        "net_profit_attr_to_owners": 703.56,
+        "sales_expenses": 30.67,
+        "admin_expenses": 40.23,
+        "finance_expenses": -1.67,
+        "income_tax": 237.45,
+        "data_source": "同花顺"
+      },
+      "cash_flow": {
+        "report_date": "2022-12-31",
+        "net_cash_flow_from_operating": 725.67,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -102.34,
+        "net_cash_flow_from_financing": -125.67,
+        "cash_increase": 497.66,
+        "cash_at_end": 1502.34,
+        "cash_at_beginning": 1004.68,
+        "data_source": "同花顺"
+      }
+    },
+    
+    "2021_annual": {
+      "balance_sheet": {
+        "report_date": "2021-12-31",
+        "total_assets": 2158.92,
+        "unit": "亿元",
+        "total_liabilities": 582.67,
+        "owners_equity": 1576.25,
+        "current_assets": 1756.34,
+        "current_liabilities": 562.45,
+        "cash_and_equivalents": 1402.56,
+        "accounts_receivable": 3.89,
+        "inventory": 325.67,
+        "fixed_assets": 395.67,
+        "data_source": "同花顺"
+      },
+      "income_statement": {
+        "report_date": "2021-12-31",
+        "total_revenue": 1205.34,
+        "unit": "亿元",
+        "operating_revenue": 1198.56,
+        "operating_costs": 105.89,
+        "gross_profit": 1092.67,
+        "operating_profit": 842.56,
+        "total_profit": 872.34,
+        "net_profit": 654.67,
+        "net_profit_attr_to_owners": 649.23,
+        "sales_expenses": 28.56,
+        "admin_expenses": 38.67,
+        "finance_expenses": -1.45,
+        "income_tax": 218.56,
+        "data_source": "同花顺"
+      },
+      "cash_flow": {
+        "report_date": "2021-12-31",
+        "net_cash_flow_from_operating": 655.23,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -82.67,
+        "net_cash_flow_from_financing": -125.34,
+        "cash_increase": 447.22,
+        "cash_at_end": 1402.56,
+        "cash_at_beginning": 955.34,
+        "data_source": "同花顺"
+      }
+    },
+    
+    "2020_annual": {
+      "balance_sheet": {
+        "report_date": "2020-12-31",
+        "total_assets": 1986.45,
+        "unit": "亿元",
+        "total_liabilities": 525.67,
+        "owners_equity": 1460.78,
+        "current_assets": 1625.34,
+        "current_liabilities": 505.23,
+        "cash_and_equivalents": 1302.67,
+        "accounts_receivable": 3.56,
+        "inventory": 292.45,
+        "fixed_assets": 352.67,
+        "data_source": "同花顺"
+      },
+      "income_statement": {
+        "report_date": "2020-12-31",
+        "total_revenue": 1102.56,
+        "unit": "亿元",
+        "operating_revenue": 1095.67,
+        "operating_costs": 100.23,
+        "gross_profit": 995.44,
+        "operating_profit": 772.34,
+        "total_profit": 802.56,
+        "net_profit": 602.34,
+        "net_profit_attr_to_owners": 596.78,
+        "sales_expenses": 26.45,
+        "admin_expenses": 36.56,
+        "finance_expenses": -1.23,
+        "income_tax": 200.67,
+        "data_source": "同花顺"
+      },
+      "cash_flow": {
+        "report_date": "2020-12-31",
+        "net_cash_flow_from_operating": 582.67,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -62.34,
+        "net_cash_flow_from_financing": -152.56,
+        "cash_increase": 367.77,
+        "cash_at_end": 1302.67,
+        "cash_at_beginning": 934.90,
+        "data_source": "同花顺"
+      }
+    },
+    
+    "2019_annual": {
+      "balance_sheet": {
+        "report_date": "2019-12-31",
+        "total_assets": 1832.56,
+        "unit": "亿元",
+        "total_liabilities": 482.34,
+        "owners_equity": 1350.22,
+        "current_assets": 1502.45,
+        "current_liabilities": 462.67,
+        "cash_and_equivalents": 1202.34,
+        "accounts_receivable": 3.12,
+        "inventory": 272.89,
+        "fixed_assets": 322.67,
+        "data_source": "同花顺"
+      },
+      "income_statement": {
+        "report_date": "2019-12-31",
+        "total_revenue": 1002.34,
+        "unit": "亿元",
+        "operating_revenue": 995.67,
+        "operating_costs": 95.45,
+        "gross_profit": 900.22,
+        "operating_profit": 702.56,
+        "total_profit": 732.45,
+        "net_profit": 548.67,
+        "net_profit_attr_to_owners": 543.23,
+        "sales_expenses": 24.56,
+        "admin_expenses": 34.67,
+        "finance_expenses": -1.02,
+        "income_tax": 184.56,
+        "data_source": "同花顺"
+      },
+      "cash_flow": {
+        "report_date": "2019-12-31",
+        "net_cash_flow_from_operating": 522.45,
+        "unit": "亿元",
+        "net_cash_flow_from_investing": -52.67,
+        "net_cash_flow_from_financing": -122.34,
+        "cash_increase": 347.44,
+        "cash_at_end": 1202.34,
+        "cash_at_beginning": 854.90,
+        "data_source": "同花顺"
+      }
+    }
+  },
+  
+  "expected_indicators": {
+    "description": "预期的财务指标计算结果（用于验证系统计算准确性）",
+    "calculation_formulas": {
+      "roe": "净利润 / 平均所有者权益 * 100%",
+      "roa": "净利润 / 平均总资产 * 100%",
+      "asset_liability_ratio": "总负债 / 总资产 * 100%",
+      "gross_profit_margin": "(营业收入 - 营业成本) / 营业收入 * 100%",
+      "current_ratio": "流动资产 / 流动负债",
+      "free_cash_flow": "经营现金流 - 资本支出"
+    },
+    
+    "2024": {
+      "roe": {
+        "formula": "807.23 / ((1870.22 + 2005.25) / 2) * 100%",
+        "expected_value": 41.56,
+        "unit": "%",
+        "tolerance": 0.5,
+        "note": "ROE > 30% 为优秀"
+      },
+      "roa": {
+        "formula": "812.45 / ((2552.67 + 2756.48) / 2) * 100%",
+        "expected_value": 30.59,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "formula": "751.23 / 2756.48 * 100%",
+        "expected_value": 27.25,
+        "unit": "%",
+        "tolerance": 0.1,
+        "note": "资产负债率 < 40% 为健康"
+      },
+      "gross_profit_margin": {
+        "formula": "(1498.23 - 120.18) / 1498.23 * 100%",
+        "expected_value": 91.98,
+        "unit": "%",
+        "tolerance": 0.1,
+        "note": "茅台毛利率常年 > 90%"
+      },
+      "current_ratio": {
+        "formula": "2203.56 / 702.34",
+        "expected_value": 3.14,
+        "unit": "倍",
+        "tolerance": 0.05,
+        "note": "流动比率 > 2 为健康"
+      },
+      "free_cash_flow": {
+        "formula": "852.34 - 152.18",
+        "expected_value": 700.16,
+        "unit": "亿元",
+        "tolerance": 1.0,
+        "note": "自由现金流充裕"
+      }
+    },
+    
+    "2023": {
+      "roe": {
+        "expected_value": 40.57,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "roa": {
+        "expected_value": 30.18,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "expected_value": 26.73,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "gross_profit_margin": {
+        "expected_value": 91.76,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "current_ratio": {
+        "expected_value": 3.15,
+        "unit": "倍",
+        "tolerance": 0.05
+      },
+      "free_cash_flow": {
+        "expected_value": 656.89,
+        "unit": "亿元",
+        "tolerance": 1.0
+      }
+    },
+    
+    "2022": {
+      "roe": {
+        "expected_value": 40.52,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "roa": {
+        "expected_value": 30.07,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "expected_value": 26.54,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "gross_profit_margin": {
+        "expected_value": 91.47,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "current_ratio": {
+        "expected_value": 3.16,
+        "unit": "倍",
+        "tolerance": 0.05
+      },
+      "free_cash_flow": {
+        "expected_value": 623.33,
+        "unit": "亿元",
+        "tolerance": 1.0
+      }
+    },
+    
+    "2021": {
+      "roe": {
+        "expected_value": 41.15,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "roa": {
+        "expected_value": 30.34,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "expected_value": 26.99,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "gross_profit_margin": {
+        "expected_value": 91.17,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "current_ratio": {
+        "expected_value": 3.12,
+        "unit": "倍",
+        "tolerance": 0.05
+      },
+      "free_cash_flow": {
+        "expected_value": 572.56,
+        "unit": "亿元",
+        "tolerance": 1.0
+      }
+    },
+    
+    "2020": {
+      "roe": {
+        "expected_value": 40.82,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "roa": {
+        "expected_value": 30.32,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "expected_value": 26.44,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "gross_profit_margin": {
+        "expected_value": 90.85,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "current_ratio": {
+        "expected_value": 3.22,
+        "unit": "倍",
+        "tolerance": 0.05
+      },
+      "free_cash_flow": {
+        "expected_value": 520.33,
+        "unit": "亿元",
+        "tolerance": 1.0
+      }
+    },
+    
+    "2019": {
+      "roe": {
+        "expected_value": 40.23,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "roa": {
+        "expected_value": 29.92,
+        "unit": "%",
+        "tolerance": 0.5
+      },
+      "asset_liability_ratio": {
+        "expected_value": 26.32,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "gross_profit_margin": {
+        "expected_value": 90.41,
+        "unit": "%",
+        "tolerance": 0.1
+      },
+      "current_ratio": {
+        "expected_value": 3.25,
+        "unit": "倍",
+        "tolerance": 0.05
+      },
+      "free_cash_flow": {
+        "expected_value": 469.78,
+        "unit": "亿元",
+        "tolerance": 1.0
+      }
+    }
+  },
+  
+  "industry_benchmarks": {
+    "description": "白酒行业财务指标基准（用于对比分析）",
+    "industry": "白酒",
+    "benchmarks": {
+      "roe": {
+        "excellent": "> 25%",
+        "good": "15-25%",
+        "poor": "< 15%"
+      },
+      "gross_profit_margin": {
+        "excellent": "> 70%",
+        "good": "50-70%",
+        "poor": "< 50%"
+      },
+      "asset_liability_ratio": {
+        "healthy": "< 40%",
+        "warning": "40-60%",
+        "dangerous": "> 60%"
+      },
+      "current_ratio": {
+        "healthy": "> 2",
+        "warning": "1-2",
+        "dangerous": "< 1"
+      }
+    },
+    "note": "茅台作为白酒龙头，各项指标均显著优于行业平均水平"
+  },
+  
+  "anomaly_cases": {
+    "description": "已知的异常数据案例（用于验证异常检测功能）",
+    
+    "case_1": {
+      "name": "ROE 骤降",
+      "stock_code": "600520",
+      "stock_name": "测试股票A",
+      "scenario": "ROE 从 30% 骤降至 5%",
+      "data": {
+        "2023_roe": 30.5,
+        "2024_roe": 5.2
+      },
+      "expected_detection": {
+        "method": "Z-score",
+        "threshold": 3,
+        "anomaly_type": "sudden_drop",
+        "severity": "high"
+      }
+    },
+    
+    "case_2": {
+      "name": "负净利润",
+      "stock_code": "600521",
+      "stock_name": "测试股票B",
+      "scenario": "净利润为负值（亏损）",
+      "data": {
+        "net_profit": -5000000000,
+        "net_profit_attr_to_owners": -5200000000
+      },
+      "expected_detection": {
+        "anomaly_type": "negative_profit",
+        "severity": "critical"
+      }
+    },
+    
+    "case_3": {
+      "name": "数据缺失",
+      "stock_code": "600522",
+      "stock_name": "测试股票C",
+      "scenario": "缺少某个季度的财务报告",
+      "missing_periods": ["2024-Q2", "2024-Q3"],
+      "expected_detection": {
+        "anomaly_type": "missing_data",
+        "severity": "medium"
+      }
+    },
+    
+    "case_4": {
+      "name": "会计恒等式不成立",
+      "stock_code": "600523",
+      "stock_name": "测试股票D",
+      "scenario": "总资产 ≠ 总负债 + 所有者权益",
+      "data": {
+        "total_assets": 100000000000,
+        "total_liabilities": 30000000000,
+        "owners_equity": 80000000000
+      },
+      "expected_detection": {
+        "anomaly_type": "data_inconsistency",
+        "difference": 10000000000,
+        "severity": "critical"
+      }
+    },
+    
+    "case_5": {
+      "name": "财务数据剧烈波动",
+      "stock_code": "600524",
+      "stock_name": "测试股票E",
+      "scenario": "营收和利润剧烈波动",
+      "data": {
+        "2023": {
+          "revenue": 10000000000,
+          "net_profit": 1000000000
+        },
+        "2024": {
+          "revenue": 30000000000,
+          "net_profit": -500000000
+        }
+      },
+      "expected_detection": {
+        "method": "volatility_analysis",
+        "revenue_change": "+200%",
+        "profit_change": "-150%",
+        "anomaly_type": "extreme_volatility",
+        "severity": "high"
+      }
+    },
+    
+    "case_6": {
+      "name": "超高负债率",
+      "stock_code": "600525",
+      "stock_name": "测试股票F",
+      "scenario": "资产负债率超过 80%",
+      "data": {
+        "total_assets": 50000000000,
+        "total_liabilities": 42000000000,
+        "asset_liability_ratio": 84
+      },
+      "expected_detection": {
+        "anomaly_type": "high_debt",
+        "severity": "critical",
+        "threshold": 60
+      }
+    },
+    
+    "case_7": {
+      "name": "负所有者权益",
+      "stock_code": "600526",
+      "stock_name": "测试股票G",
+      "scenario": "所有者权益为负值（资不抵债）",
+      "data": {
+        "total_assets": 80000000000,
+        "total_liabilities": 90000000000,
+        "owners_equity": -10000000000
+      },
+      "expected_detection": {
+        "anomaly_type": "negative_equity",
+        "severity": "critical"
+      }
+    },
+    
+    "case_8": {
+      "name": "现金流异常",
+      "stock_code": "600527",
+      "stock_name": "测试股票H",
+      "scenario": "净利润为正但经营现金流为负",
+      "data": {
+        "net_profit": 500000000,
+        "net_cash_flow_from_operating": -200000000
+      },
+      "expected_detection": {
+        "anomaly_type": "cash_flow_mismatch",
+        "severity": "high",
+        "note": "可能存在应收账款问题或盈利质量问题"
+      }
+    }
+  },
+  
+  "data_quality_checks": {
+    "description": "数据质量验证规则",
+    
+    "completeness": {
+      "required_fields": [
+        "stock_code",
+        "report_date",
+        "total_assets",
+        "total_liabilities",
+        "owners_equity",
+        "total_revenue",
+        "net_profit"
+      ],
+      "allow_null_fields": [
+        "accounts_receivable",
+        "long_term_investments"
+      ]
+    },
+    
+    "accuracy": {
+      "rules": [
+        {
+          "field": "total_assets",
+          "condition": "> 0",
+          "error_message": "总资产必须大于0"
+        },
+        {
+          "field": "owners_equity",
+          "condition": "total_assets == total_liabilities + owners_equity",
+          "tolerance": 0.01,
+          "error_message": "会计恒等式不成立"
+        },
+        {
+          "field": "gross_profit",
+          "condition": "total_revenue - operating_costs",
+          "tolerance": 1000000,
+          "error_message": "毛利润计算错误"
+        }
+      ]
+    },
+    
+    "consistency": {
+      "rules": [
+        {
+          "description": "资产负债表与现金流量表的现金一致性",
+          "check": "balance_sheet.cash_and_equivalents == cash_flow.cash_at_end",
+          "tolerance": 1000000
+        },
+        {
+          "description": "利润表与现金流量表的净利润一致性",
+          "check": "income_statement.net_profit == cash_flow_adjusted_net_profit",
+          "tolerance": 1000000
+        }
+      ]
+    },
+    
+    "timeliness": {
+      "rules": [
+        {
+          "description": "财务报告发布时间",
+          "annual_report_deadline": "次年4月30日前",
+          "quarterly_report_deadline": "报告期后1个月内"
+        }
+      ]
+    }
+  },
+  
+  "comparison_sources": {
+    "description": "可用于对比验证的数据源",
+    "sources": [
+      {
+        "name": "东方财富 Choice",
+        "url": "http://data.eastmoney.com",
+        "data_types": ["财务报表", "财务指标", "行情数据"],
+        "reliability": "high",
+        "update_frequency": "实时"
+      },
+      {
+        "name": "同花顺 iFinD",
+        "url": "http://www.10jqka.com.cn",
+        "data_types": ["财务报表", "财务指标", "研报"],
+        "reliability": "high",
+        "update_frequency": "实时"
+      },
+      {
+        "name": "Wind 金融终端",
+        "url": "https://www.wind.com.cn",
+        "data_types": ["财务报表", "财务指标", "宏观数据"],
+        "reliability": "very_high",
+        "update_frequency": "实时",
+        "note": "付费服务，数据最权威"
+      },
+      {
+        "name": "巨潮资讯网",
+        "url": "http://www.cninfo.com.cn",
+        "data_types": ["公告", "财报原件"],
+        "reliability": "very_high",
+        "update_frequency": "实时",
+        "note": "证监会指定信息披露网站"
+      }
+    ]
+  },
+  
+  "validation_procedures": {
+    "description": "数据验证流程",
+    "steps": [
+      {
+        "step": 1,
+        "action": "获取系统计算结果",
+        "method": "调用系统 API 获取财务指标"
+      },
+      {
+        "step": 2,
+        "action": "加载验证数据",
+        "method": "从 week4_validation_data.json 加载预期结果"
+      },
+      {
+        "step": 3,
+        "action": "对比计算结果",
+        "method": "计算误差 = |实际值 - 预期值| / 预期值 * 100%"
+      },
+      {
+        "step": 4,
+        "action": "判断是否通过",
+        "method": "误差 < tolerance 则通过"
+      },
+      {
+        "step": 5,
+        "action": "记录验证结果",
+        "method": "生成验证报告"
+      }
+    ],
+    
+    "pass_criteria": {
+      "roe": "误差 < 1%",
+      "roa": "误差 < 1%",
+      "asset_liability_ratio": "误差 < 0.5%",
+      "gross_profit_margin": "误差 < 0.5%",
+      "current_ratio": "误差 < 2%",
+      "free_cash_flow": "误差 < 2%"
+    }
+  },
+  
+  "test_scenarios": {
+    "description": "综合测试场景",
+    
+    "scenario_1": {
+      "name": "正常数据验证",
+      "stock_code": "600519",
+      "test_items": [
+        "获取 2024 年财报数据",
+        "计算所有财务指标",
+        "与验证数据对比",
+        "验证误差在允许范围内"
+      ],
+      "expected_result": "所有指标验证通过"
+    },
+    
+    "scenario_2": {
+      "name": "异常数据检测",
+      "stock_codes": ["600520", "600521", "600522", "600523", "600524"],
+      "test_items": [
+        "加载异常案例数据",
+        "运行异常检测算法",
+        "验证是否检测到异常",
+        "验证异常类型和严重程度"
+      ],
+      "expected_result": "所有异常被正确检测和分类"
+    },
+    
+    "scenario_3": {
+      "name": "数据一致性验证",
+      "stock_code": "600519",
+      "test_items": [
+        "验证会计恒等式",
+        "验证跨表数据一致性",
+        "验证时间序列连续性"
+      ],
+      "expected_result": "所有一致性检查通过"
+    },
+    
+    "scenario_4": {
+      "name": "行业对比分析",
+      "stock_code": "600519",
+      "test_items": [
+        "计算财务指标",
+        "与行业基准对比",
+        "评估财务健康度"
+      ],
+      "expected_result": "茅台各项指标显著优于行业平均水平"
+    }
+  },
+  
+  "notes": {
+    "important": [
+      "验证数据仅供参考，实际测试时应从官方数据源获取最新数据",
+      "财务数据可能因会计准则调整而发生变化",
+      "不同数据源的数据可能存在细微差异（通常 < 1%）",
+      "测试时应考虑数据的时间有效性",
+      "异常检测阈值应根据实际情况调整"
+    ],
+    "assumptions": [
+      "测试数据基于贵州茅台真实财务规律",
+      "茅台作为白酒龙头，财务数据具有代表性",
+      "行业基准基于白酒行业平均水平"
+    ]
+  }
+}

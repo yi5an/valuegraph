@@ -1,0 +1,26 @@
+{
+  "stocks": [
+    {
+      "code": "SZ300750",
+      "name": "宁德时代",
+      "current_price": 342.01,
+      "target_buy_low": 280,
+      "target_buy_high": 300,
+      "last_check": "2026-02-27 18:28:00"
+    },
+    {
+      "code": "SZ002594",
+      "name": "比亚迪",
+      "current_price": 89.32,
+      "target_buy_low": 60,
+      "target_buy_high": 70,
+      "last_check": "2026-02-27 18:28:00"
+    }
+  ],
+  "settings": {
+    "check_interval_hours": 1,
+    "market_hours_only": true,
+    "alert_channel": "feishu",
+    "feishu_chat_id": "oc_306c503b2735c6eb63eb4d9a2467db25"
+  }
+}

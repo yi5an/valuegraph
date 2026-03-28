@@ -1,0 +1,480 @@
+{
+  "test_data_info": {
+    "stock_code": "600519",
+    "stock_name": "贵州茅台",
+    "data_range": "2015-2024",
+    "created_at": "2026-03-22",
+    "data_source": "模拟数据（基于真实财务规律）",
+    "note": "用于 Week 4 财报数据功能测试"
+  },
+  
+  "balance_sheets": {
+    "normal_data": [
+      {
+        "report_date": "2024-12-31",
+        "total_assets": 275000000000,
+        "total_liabilities": 75000000000,
+        "owners_equity": 200000000000,
+        "current_assets": 220000000000,
+        "current_liabilities": 70000000000,
+        "cash_and_equivalents": 180000000000,
+        "accounts_receivable": 500000000,
+        "inventory": 35000000000,
+        "fixed_assets": 50000000000,
+        "long_term_investments": 5000000000
+      },
+      {
+        "report_date": "2023-12-31",
+        "total_assets": 255000000000,
+        "total_liabilities": 68000000000,
+        "owners_equity": 187000000000,
+        "current_assets": 205000000000,
+        "current_liabilities": 65000000000,
+        "cash_and_equivalents": 165000000000,
+        "accounts_receivable": 450000000,
+        "inventory": 38000000000,
+        "fixed_assets": 48000000000,
+        "long_term_investments": 2000000000
+      },
+      {
+        "report_date": "2022-12-31",
+        "total_assets": 235000000000,
+        "total_liabilities": 62000000000,
+        "owners_equity": 173000000000,
+        "current_assets": 190000000000,
+        "current_liabilities": 60000000000,
+        "cash_and_equivalents": 150000000000,
+        "accounts_receivable": 400000000,
+        "inventory": 37000000000,
+        "fixed_assets": 44000000000,
+        "long_term_investments": 1000000000
+      },
+      {
+        "report_date": "2021-12-31",
+        "total_assets": 215000000000,
+        "total_liabilities": 58000000000,
+        "owners_equity": 157000000000,
+        "current_assets": 175000000000,
+        "current_liabilities": 56000000000,
+        "cash_and_equivalents": 140000000000,
+        "accounts_receivable": 380000000,
+        "inventory": 32000000000,
+        "fixed_assets": 39000000000,
+        "long_term_investments": 1000000000
+      },
+      {
+        "report_date": "2020-12-31",
+        "total_assets": 198000000000,
+        "total_liabilities": 52000000000,
+        "owners_equity": 146000000000,
+        "current_assets": 162000000000,
+        "current_liabilities": 50000000000,
+        "cash_and_equivalents": 130000000000,
+        "accounts_receivable": 350000000,
+        "inventory": 29000000000,
+        "fixed_assets": 35000000000,
+        "long_term_investments": 1000000000
+      },
+      {
+        "report_date": "2019-12-31",
+        "total_assets": 183000000000,
+        "total_liabilities": 48000000000,
+        "owners_equity": 135000000000,
+        "current_assets": 150000000000,
+        "current_liabilities": 46000000000,
+        "cash_and_equivalents": 120000000000,
+        "accounts_receivable": 300000000,
+        "inventory": 27000000000,
+        "fixed_assets": 32000000000,
+        "long_term_investments": 1000000000
+      }
+    ],
+    
+    "edge_cases": {
+      "zero_inventory": {
+        "report_date": "2024-06-30",
+        "total_assets": 270000000000,
+        "total_liabilities": 72000000000,
+        "owners_equity": 198000000000,
+        "current_assets": 215000000000,
+        "current_liabilities": 68000000000,
+        "cash_and_equivalents": 200000000000,
+        "accounts_receivable": 0,
+        "inventory": 0,
+        "fixed_assets": 52000000000,
+        "long_term_investments": 3000000000
+      },
+      "high_liability": {
+        "report_date": "2024-09-30",
+        "total_assets": 272000000000,
+        "total_liabilities": 150000000000,
+        "owners_equity": 122000000000,
+        "current_assets": 218000000000,
+        "current_liabilities": 145000000000,
+        "cash_and_equivalents": 170000000000,
+        "accounts_receivable": 200000000,
+        "inventory": 45000000000,
+        "fixed_assets": 51000000000,
+        "long_term_investments": 3000000000
+      }
+    },
+    
+    "anomaly_data": {
+      "negative_equity": {
+        "report_date": "2024-03-31",
+        "total_assets": 268000000000,
+        "total_liabilities": 280000000000,
+        "owners_equity": -12000000000,
+        "current_assets": 213000000000,
+        "current_liabilities": 275000000000,
+        "cash_and_equivalents": 175000000000,
+        "accounts_receivable": 100000000,
+        "inventory": 35000000000,
+        "fixed_assets": 53000000000,
+        "long_term_investments": 2000000000
+      },
+      "asset_mismatch": {
+        "report_date": "2023-06-30",
+        "total_assets": 250000000000,
+        "total_liabilities": 65000000000,
+        "owners_equity": 200000000000,
+        "current_assets": 200000000000,
+        "current_liabilities": 62000000000,
+        "cash_and_equivalents": 160000000000,
+        "accounts_receivable": 420000000,
+        "inventory": 36000000000,
+        "fixed_assets": 48000000000,
+        "long_term_investments": 2000000000
+      }
+    }
+  },
+  
+  "income_statements": {
+    "normal_data": [
+      {
+        "report_date": "2024-12-31",
+        "total_revenue": 150000000000,
+        "operating_revenue": 149500000000,
+        "operating_costs": 12000000000,
+        "gross_profit": 138000000000,
+        "operating_profit": 105000000000,
+        "total_profit": 108000000000,
+        "net_profit": 81000000000,
+        "net_profit_attr_to_owners": 80500000000,
+        "sales_expenses": 3500000000,
+        "admin_expenses": 4500000000,
+        "finance_expenses": -200000000,
+        "income_tax": 27000000000
+      },
+      {
+        "report_date": "2023-12-31",
+        "total_revenue": 140000000000,
+        "operating_revenue": 139500000000,
+        "operating_costs": 11500000000,
+        "gross_profit": 128500000000,
+        "operating_profit": 98000000000,
+        "total_profit": 101000000000,
+        "net_profit": 75700000000,
+        "net_profit_attr_to_owners": 75200000000,
+        "sales_expenses": 3200000000,
+        "admin_expenses": 4200000000,
+        "finance_expenses": -180000000,
+        "income_tax": 25300000000
+      },
+      {
+        "report_date": "2022-12-31",
+        "total_revenue": 130000000000,
+        "operating_revenue": 129500000000,
+        "operating_costs": 11000000000,
+        "gross_profit": 119000000000,
+        "operating_profit": 91000000000,
+        "total_profit": 94000000000,
+        "net_profit": 70500000000,
+        "net_profit_attr_to_owners": 70000000000,
+        "sales_expenses": 3000000000,
+        "admin_expenses": 4000000000,
+        "finance_expenses": -160000000,
+        "income_tax": 23500000000
+      },
+      {
+        "report_date": "2021-12-31",
+        "total_revenue": 120000000000,
+        "operating_revenue": 119500000000,
+        "operating_costs": 10500000000,
+        "gross_profit": 109500000000,
+        "operating_profit": 84000000000,
+        "total_profit": 87000000000,
+        "net_profit": 65200000000,
+        "net_profit_attr_to_owners": 64700000000,
+        "sales_expenses": 2800000000,
+        "admin_expenses": 3800000000,
+        "finance_expenses": -140000000,
+        "income_tax": 21800000000
+      },
+      {
+        "report_date": "2020-12-31",
+        "total_revenue": 110000000000,
+        "operating_revenue": 109500000000,
+        "operating_costs": 10000000000,
+        "gross_profit": 100000000000,
+        "operating_profit": 77000000000,
+        "total_profit": 80000000000,
+        "net_profit": 60000000000,
+        "net_profit_attr_to_owners": 59500000000,
+        "sales_expenses": 2600000000,
+        "admin_expenses": 3600000000,
+        "finance_expenses": -120000000,
+        "income_tax": 20000000000
+      },
+      {
+        "report_date": "2019-12-31",
+        "total_revenue": 100000000000,
+        "operating_revenue": 99500000000,
+        "operating_costs": 9500000000,
+        "gross_profit": 90500000000,
+        "operating_profit": 70000000000,
+        "total_profit": 73000000000,
+        "net_profit": 54700000000,
+        "net_profit_attr_to_owners": 54200000000,
+        "sales_expenses": 2400000000,
+        "admin_expenses": 3400000000,
+        "finance_expenses": -100000000,
+        "income_tax": 18300000000
+      }
+    ],
+    
+    "edge_cases": {
+      "zero_revenue": {
+        "report_date": "2024-01-31",
+        "total_revenue": 0,
+        "operating_revenue": 0,
+        "operating_costs": 0,
+        "gross_profit": 0,
+        "operating_profit": -500000000,
+        "total_profit": -500000000,
+        "net_profit": -500000000,
+        "net_profit_attr_to_owners": -500000000,
+        "sales_expenses": 200000000,
+        "admin_expenses": 300000000,
+        "finance_expenses": 0,
+        "income_tax": 0
+      },
+      "negative_profit": {
+        "report_date": "2024-02-29",
+        "total_revenue": 5000000000,
+        "operating_revenue": 4800000000,
+        "operating_costs": 6000000000,
+        "gross_profit": -1200000000,
+        "operating_profit": -2000000000,
+        "total_profit": -2000000000,
+        "net_profit": -2000000000,
+        "net_profit_attr_to_owners": -2000000000,
+        "sales_expenses": 300000000,
+        "admin_expenses": 500000000,
+        "finance_expenses": 0,
+        "income_tax": 0
+      }
+    }
+  },
+  
+  "cash_flow_statements": {
+    "normal_data": [
+      {
+        "report_date": "2024-12-31",
+        "net_cash_flow_from_operating": 85000000000,
+        "net_cash_flow_from_investing": -15000000000,
+        "net_cash_flow_from_financing": -20000000000,
+        "cash_increase": 50000000000,
+        "cash_at_end": 180000000000,
+        "cash_at_beginning": 130000000000
+      },
+      {
+        "report_date": "2023-12-31",
+        "net_cash_flow_from_operating": 78000000000,
+        "net_cash_flow_from_investing": -12000000000,
+        "net_cash_flow_from_financing": -16000000000,
+        "cash_increase": 50000000000,
+        "cash_at_end": 130000000000,
+        "cash_at_beginning": 80000000000
+      },
+      {
+        "report_date": "2022-12-31",
+        "net_cash_flow_from_operating": 72000000000,
+        "net_cash_flow_from_investing": -10000000000,
+        "net_cash_flow_from_financing": -12000000000,
+        "cash_increase": 50000000000,
+        "cash_at_end": 80000000000,
+        "cash_at_beginning": 30000000000
+      },
+      {
+        "report_date": "2021-12-31",
+        "net_cash_flow_from_operating": 65000000000,
+        "net_cash_flow_from_investing": -8000000000,
+        "net_cash_flow_from_financing": -12000000000,
+        "cash_increase": 45000000000,
+        "cash_at_end": 30000000000,
+        "cash_at_beginning": -15000000000
+      },
+      {
+        "report_date": "2020-12-31",
+        "net_cash_flow_from_operating": 58000000000,
+        "net_cash_flow_from_investing": -6000000000,
+        "net_cash_flow_from_financing": -15000000000,
+        "cash_increase": 37000000000,
+        "cash_at_end": -15000000000,
+        "cash_at_beginning": -52000000000
+      },
+      {
+        "report_date": "2019-12-31",
+        "net_cash_flow_from_operating": 52000000000,
+        "net_cash_flow_from_investing": -5000000000,
+        "net_cash_flow_from_financing": -12000000000,
+        "cash_increase": 35000000000,
+        "cash_at_end": -52000000000,
+        "cash_at_beginning": -87000000000
+      }
+    ],
+    
+    "edge_cases": {
+      "negative_operating_cash_flow": {
+        "report_date": "2024-03-31",
+        "net_cash_flow_from_operating": -5000000000,
+        "net_cash_flow_from_investing": -2000000000,
+        "net_cash_flow_from_financing": 10000000000,
+        "cash_increase": 3000000000,
+        "cash_at_end": 183000000000,
+        "cash_at_beginning": 180000000000
+      },
+      "all_negative": {
+        "report_date": "2024-04-30",
+        "net_cash_flow_from_operating": -3000000000,
+        "net_cash_flow_from_investing": -5000000000,
+        "net_cash_flow_from_financing": -2000000000,
+        "cash_increase": -10000000000,
+        "cash_at_end": 173000000000,
+        "cash_at_beginning": 183000000000
+      }
+    }
+  },
+  
+  "expected_financial_indicators": {
+    "2024": {
+      "roe": 0.4025,
+      "roa": 0.2945,
+      "asset_liability_ratio": 0.2727,
+      "gross_profit_margin": 0.92,
+      "current_ratio": 3.1429,
+      "free_cash_flow": 70000000000
+    },
+    "2023": {
+      "roe": 0.4027,
+      "roa": 0.2969,
+      "asset_liability_ratio": 0.2667,
+      "gross_profit_margin": 0.9179,
+      "current_ratio": 3.1538,
+      "free_cash_flow": 66000000000
+    },
+    "2022": {
+      "roe": 0.4046,
+      "roa": 0.3000,
+      "asset_liability_ratio": 0.2638,
+      "gross_profit_margin": 0.9154,
+      "current_ratio": 3.1667,
+      "free_cash_flow": 62000000000
+    },
+    "2021": {
+      "roe": 0.4121,
+      "roa": 0.3033,
+      "asset_liability_ratio": 0.2698,
+      "gross_profit_margin": 0.9125,
+      "current_ratio": 3.1250,
+      "free_cash_flow": 57000000000
+    },
+    "2020": {
+      "roe": 0.4075,
+      "roa": 0.3030,
+      "asset_liability_ratio": 0.2626,
+      "gross_profit_margin": 0.9091,
+      "current_ratio": 3.2400,
+      "free_cash_flow": 52000000000
+    },
+    "2019": {
+      "roe": 0.4007,
+      "roa": 0.2989,
+      "asset_liability_ratio": 0.2623,
+      "gross_profit_margin": 0.9050,
+      "current_ratio": 3.2609,
+      "free_cash_flow": 47000000000
+    }
+  },
+  
+  "anomaly_scenarios": {
+    "sudden_roe_drop": {
+      "description": "ROE 从 30% 骤降至 5%",
+      "stock_code": "600520",
+      "data": {
+        "2023_roe": 0.30,
+        "2024_roe": 0.05
+      }
+    },
+    "negative_net_profit": {
+      "description": "净利润为负值",
+      "stock_code": "600521",
+      "data": {
+        "net_profit": -5000000000
+      }
+    },
+    "missing_quarter": {
+      "description": "缺少某个季度的数据",
+      "stock_code": "600522",
+      "missing_periods": ["2024-Q2"]
+    },
+    "data_inconsistency": {
+      "description": "资产负债表和利润表数据不一致",
+      "stock_code": "600523",
+      "issue": "总资产 != 负债 + 所有者权益"
+    },
+    "extreme_volatility": {
+      "description": "财务数据剧烈波动（Z-score > 3）",
+      "stock_code": "600524",
+      "volatility_data": {
+        "revenue_change": "+200%",
+        "profit_change": "-150%"
+      }
+    }
+  },
+  
+  "performance_test_data": {
+    "batch_stocks": [
+      "600519", "000858", "000568", "600036", "601318",
+      "600276", "002415", "300750", "000333", "002594",
+      "601012", "600887", "000002", "600030", "601166",
+      "601888", "002304", "600809", "000651", "601398"
+    ],
+    "expected_metrics": {
+      "single_query_time": "< 1s",
+      "batch_100_query_time": "< 30s",
+      "database_query_time": "< 100ms"
+    }
+  },
+  
+  "error_handling_scenarios": {
+    "network_timeout": {
+      "description": "网络请求超时",
+      "timeout_seconds": 30
+    },
+    "api_rate_limit": {
+      "description": "API 请求频率限制",
+      "max_requests_per_minute": 100
+    },
+    "invalid_stock_code": {
+      "description": "无效的股票代码",
+      "test_codes": ["999999", "123456789", "ABC123", ""]
+    },
+    "data_source_fallback": {
+      "description": "Tushare 不可用时降级到 AkShare",
+      "primary_source": "tushare",
+      "fallback_source": "akshare"
+    }
+  }
+}

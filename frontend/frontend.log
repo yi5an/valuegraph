@@ -1,0 +1,23 @@
+
+> valuegraph-frontend@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use, trying 3001 instead.
+ ⚠ Port 3001 is in use, trying 3002 instead.
+ ⚠ Port 3002 is in use, trying 3003 instead.
+  ▲ Next.js 14.2.30
+  - Local:        http://localhost:3003
+  - Experiments (use with caution):
+    · typedRoutes
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ○ Compiling / ...
+ ✓ Compiled / in 1037ms (545 modules)
+ GET / 200 in 1271ms
+ GET / 200 in 33ms
+ ⚠ Cross origin request detected from 192.168.0.103 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+ ○ Compiling /financial ...
+ ✓ Compiled /shareholders in 2.2s (1631 modules)
+[?25h
