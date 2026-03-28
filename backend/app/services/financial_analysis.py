@@ -54,13 +54,18 @@ class FinancialService:
             Financial.stock_code == stock_code
         ).order_by(Financial.report_date.desc()).limit(years).all()
         
-        # 如果数据库无数据，从 AkShare 获取
+        # 如果数据库无数据，尝试从 AkShare 获取（非阻塞）
         if not financials:
-            logger.info(f"📊 从 AkShare 获取 {stock_code} 财报数据")
-            self._sync_financial_data(stock_code)
-            financials = self.db.query(Financial).filter(
-                Financial.stock_code == stock_code
-            ).order_by(Financial.report_date.desc()).limit(years).all()
+            try:
+                logger.info(f"📊 从 AkShare 获取 {stock_code} 财报数据")
+                financials_raw = AkShareCollector.get_financial_data(stock_code)
+                if financials_raw:
+                    self._save_financial_data(stock_code, financials_raw)
+                    financials = self.db.query(Financial).filter(
+                        Financial.stock_code == stock_code
+                    ).order_by(Financial.report_date.desc()).limit(years).all()
+            except Exception as e:
+                logger.warning(f"⚠️ 获取 {stock_code} 财报数据失败: {e}")
         
         # 构建时间线
         timeline = []
@@ -168,12 +173,10 @@ class FinancialService:
             'operation': int(operation),
         }
     
-    def _sync_financial_data(self, stock_code: str):
-        """同步财报数据到数据库"""
+    def _save_financial_data(self, stock_code: str, financials_raw: list):
+        """保存财报数据到数据库"""
         try:
-            financials = AkShareCollector.get_financial_data(stock_code)
-            
-            for fin_data in financials:
+            for fin_data in financials_raw:
                 # 解析日期
                 report_date = fin_data.get('report_date')
                 if isinstance(report_date, str):
@@ -200,6 +203,10 @@ class FinancialService:
                     revenue=fin_data.get('revenue'),
                     net_profit=fin_data.get('net_profit'),
                     eps=fin_data.get('eps'),
+                    bvps=fin_data.get('bvps'),
+                    operating_cash_flow=fin_data.get('operating_cash_flow'),
+                    revenue_yoy=fin_data.get('revenue_yoy'),
+                    net_profit_yoy=fin_data.get('net_profit_yoy'),
                 )
                 self.db.add(fin)
             

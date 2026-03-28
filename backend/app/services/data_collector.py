@@ -45,6 +45,36 @@ class AkShareCollector:
             return []
     
     @staticmethod
+    def _detect_report_type(date_val) -> str:
+        """根据报告期判断报告类型"""
+        try:
+            if hasattr(date_val, 'month'):
+                month = date_val.month
+            else:
+                dt = pd.to_datetime(str(date_val))
+                month = dt.month
+            if month in (3, 4):
+                return 'Q1'
+            elif month in (6, 7, 8):
+                return 'Q2'
+            elif month in (9, 10):
+                return 'Q3'
+            else:
+                return 'annual'
+        except Exception:
+            return 'annual'
+
+    @staticmethod
+    def _safe_float(val) -> Optional[float]:
+        """安全转换为 float"""
+        if val is None or (isinstance(val, float) and (pd.isna(val) or pd.isinf(val))):
+            return None
+        try:
+            return float(val)
+        except (ValueError, TypeError):
+            return None
+
+    @staticmethod
     def get_financial_data(stock_code: str) -> List[Dict]:
         """
         获取股票财务数据
@@ -55,23 +85,28 @@ class AkShareCollector:
         Returns:
             财务数据列表
         """
+        sf = AkShareCollector._safe_float
         try:
             # 获取财务分析指标
             df = ak.stock_financial_analysis_indicator(symbol=stock_code)
             
-            # 转换为字典列表
             financials = []
             for _, row in df.iterrows():
+                report_date = row.get('日期', None)
                 financials.append({
                     'stock_code': stock_code,
-                    'report_date': row.get('日期', None),
-                    'report_type': 'annual',  # 默认年报
-                    'roe': row.get('净资产收益率', None),
-                    'gross_margin': row.get('销售毛利率', None),
-                    'debt_ratio': row.get('资产负债率', None),
-                    'revenue': row.get('营业收入', None),
-                    'net_profit': row.get('净利润', None),
-                    'eps': row.get('每股收益', None),
+                    'report_date': report_date,
+                    'report_type': AkShareCollector._detect_report_type(report_date),
+                    'roe': sf(row.get('净资产收益率')),
+                    'gross_margin': sf(row.get('销售毛利率')),
+                    'debt_ratio': sf(row.get('资产负债率')),
+                    'revenue': sf(row.get('营业收入')),
+                    'net_profit': sf(row.get('净利润')),
+                    'eps': sf(row.get('每股收益')),
+                    'bvps': sf(row.get('每股净资产')),
+                    'operating_cash_flow': sf(row.get('经营现金流')),
+                    'revenue_yoy': sf(row.get('营业收入同比增长率')),
+                    'net_profit_yoy': sf(row.get('净利润同比增长率')),
                 })
             
             logger.info(f"✅ 获取 {stock_code} 财务数据成功，共 {len(financials)} 条")

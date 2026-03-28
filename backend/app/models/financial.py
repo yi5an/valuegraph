@@ -1,7 +1,7 @@
 """
 财报数据模型
 """
-from sqlalchemy import Column, String, Float, Date, DateTime, BigInteger, UniqueConstraint
+from sqlalchemy import Column, String, Float, Date, DateTime, Integer, UniqueConstraint
 from sqlalchemy.sql import func
 from sqlalchemy import ForeignKey
 from app.database import Base
@@ -14,7 +14,7 @@ class Financial(Base):
         UniqueConstraint('stock_code', 'report_date', 'report_type', name='uix_financial_code_date_type'),
     )
     
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     stock_code = Column(String(20), ForeignKey('stocks.stock_code'), nullable=False, comment="股票代码")
     report_date = Column(Date, nullable=False, comment="报告期")
     report_type = Column(String(20), nullable=False, comment="报告类型：annual, Q1, Q2, Q3")

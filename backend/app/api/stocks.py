@@ -1,15 +1,35 @@
 """
 股票推荐 API
 """
-from fastapi import APIRouter, Depends, Query, HTTPException, Request
+from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
 from typing import Optional
-from app.database import get_db
+from app.database import SessionLocal, get_db
 from app.schemas.stock import RecommendResponse, StockRecommend
 from app.services.recommendation import RecommendationService
 from app.utils.rate_limiter import limiter
+from app.models.stock import Stock
 
 router = APIRouter()
+
+
+@router.get("/search")
+async def search_stocks(
+    request: Request,
+    keyword: str = Query(default="", description="搜索关键词（代码或名称）"),
+    limit: int = Query(default=20, ge=1, le=50),
+    db: Session = Depends(get_db)
+):
+    """搜索股票"""
+    if not keyword:
+        return {"success": True, "data": []}
+    
+    query = db.query(Stock).filter(
+        (Stock.stock_code.contains(keyword)) | (Stock.name.contains(keyword))
+    ).limit(limit).all()
+    
+    data = [{"stock_code": s.stock_code, "name": s.name, "market": s.market} for s in query]
+    return {"success": True, "data": data}
 
 
 @router.get("/recommend", response_model=RecommendResponse)
@@ -70,23 +90,18 @@ async def recommend_stocks(
 @router.post("/sync")
 async def sync_stock_list(
     request: Request,
+    background_tasks: BackgroundTasks,
     market: str = Query(default="A", description="市场"),
     db: Session = Depends(get_db)
 ):
-    """
-    同步股票列表（管理员接口）
+    """同步股票列表（后台任务）"""
+    def do_sync():
+        sync_db = SessionLocal()
+        try:
+            service = RecommendationService(sync_db)
+            service.sync_stock_list(market=market)
+        finally:
+            sync_db.close()
     
-    - **market**: 市场类型（A=A股）
-    """
-    try:
-        service = RecommendationService(db)
-        count = service.sync_stock_list(market=market)
-        
-        return {
-            'success': True,
-            'message': f'同步成功，新增 {count} 只股票',
-            'count': count
-        }
-    
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"同步失败: {str(e)}")
+    background_tasks.add_task(do_sync)
+    return {'success': True, 'message': '同步任务已提交', 'count': 0}
