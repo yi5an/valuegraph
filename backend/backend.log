@@ -1,10 +1,9 @@
-INFO:     Started server process [2811698]
+INFO:     Started server process [2854215]
 INFO:     Waiting for application startup.
-2026-03-28 12:48:24,249 - app.main - INFO - 🚀 ValueGraph 后端启动中...
-2026-03-28 12:48:24,255 - app.main - INFO - ✅ 数据库初始化完成
-2026-03-28 12:48:24,255 - app.main - INFO - ✅ 应用启动成功 - ValueGraph v1.0.0
+2026-03-28 13:40:44,073 - app.main - INFO - 🚀 ValueGraph 后端启动中...
+2026-03-28 13:40:44,079 - app.main - INFO - ✅ 数据库初始化完成
+2026-03-28 13:40:44,079 - app.main - INFO - ✅ 应用启动成功 - ValueGraph v1.0.0
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
-2026-03-28 12:48:26,563 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
-INFO:     127.0.0.1:51760 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51770 - "GET /api/financials/600519 HTTP/1.1" 200 OK
+2026-03-28 13:40:46,463 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
+INFO:     127.0.0.1:40774 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK

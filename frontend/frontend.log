@@ -1,23 +1,64 @@
 
 > valuegraph-frontend@0.1.0 dev
-> next dev
+> next dev -p 3003
 
- ⚠ Port 3000 is in use, trying 3001 instead.
- ⚠ Port 3001 is in use, trying 3002 instead.
- ⚠ Port 3002 is in use, trying 3003 instead.
   ▲ Next.js 14.2.30
   - Local:        http://localhost:3003
   - Experiments (use with caution):
     · typedRoutes
 
  ✓ Starting...
- ✓ Ready in 2.5s
- ○ Compiling / ...
- ✓ Compiled / in 1037ms (545 modules)
- GET / 200 in 1271ms
- GET / 200 in 33ms
- ⚠ Cross origin request detected from 192.168.0.103 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
-Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
- ○ Compiling /financial ...
- ✓ Compiled /shareholders in 2.2s (1631 modules)
-[?25h
+ ✓ Ready in 3.5s
+ ○ Compiling /api/shareholders/[code] ...
+
+warn - The glob pattern ./styles/**/*.{css} in your Tailwind CSS configuration is invalid.
+warn - Update it to ./styles/**/*.css to silence this warning.
+ ✓ Compiled /api/shareholders/[code] in 6.8s (594 modules)
+ GET /api/stocks/recommend?market=A&limit=3 404 in 7120ms
+ GET / 200 in 7219ms
+ GET /api/shareholders/600519 200 in 9591ms
+ GET /api/financials/600519 200 in 9602ms
+ ✓ Compiled /api/stocks in 130ms (315 modules)
+ GET /api/stocks?market=A&limit=3 200 in 2598ms
+ GET /financial/600519 404 in 110ms
+ GET /shareholders/600519 404 in 24ms
+ ○ Compiling /shareholders ...
+ ✓ Compiled /shareholders in 6.7s (1654 modules)
+getShareholders error, falling back to mock data: TypeError: Failed to parse URL from /api/shareholders/600519
+    at new Request (node:internal/deps/undici/undici:9778:19)
+    at dedupeFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/dedupe-fetch.js:102:87)
+    ... 3 lines matching cause stack trace ...
+    at async ShareholdersPage (webpack-internal:///(rsc)/./app/shareholders/page.tsx:15:26) {
+  [cause]: TypeError: Invalid URL
+      at new URL (node:internal/url:818:25)
+      at new Request (node:internal/deps/undici/undici:9776:25)
+      at dedupeFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/dedupe-fetch.js:102:87)
+      at doOriginalFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/patch-fetch.js:442:24)
+      at eval (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/patch-fetch.js:628:24)
+      at async getShareholders (webpack-internal:///(rsc)/./lib/api.ts:217:21)
+      at async ShareholdersPage (webpack-internal:///(rsc)/./app/shareholders/page.tsx:15:26) {
+    code: 'ERR_INVALID_URL',
+    input: '/api/shareholders/600519'
+  }
+}
+getFinancials error, falling back to mock data: TypeError: Failed to parse URL from /api/financials/600519
+    at new Request (node:internal/deps/undici/undici:9778:19)
+    at dedupeFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/dedupe-fetch.js:102:87)
+    ... 3 lines matching cause stack trace ...
+    at async FinancialPage (webpack-internal:///(rsc)/./app/financial/page.tsx:15:24) {
+  [cause]: TypeError: Invalid URL
+      at new URL (node:internal/url:818:25)
+      at new Request (node:internal/deps/undici/undici:9776:25)
+      at dedupeFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/dedupe-fetch.js:102:87)
+      at doOriginalFetch (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/patch-fetch.js:442:24)
+      at eval (webpack-internal:///(rsc)/./node_modules/next/dist/server/lib/patch-fetch.js:628:24)
+      at async getFinancials (webpack-internal:///(rsc)/./lib/api.ts:193:21)
+      at async FinancialPage (webpack-internal:///(rsc)/./app/financial/page.tsx:15:24) {
+    code: 'ERR_INVALID_URL',
+    input: '/api/financials/600519'
+  }
+}
+ GET /shareholders 200 in 7037ms
+ GET /financial 200 in 7067ms
+ ✓ Compiled / in 257ms (280 modules)
+ GET / 200 in 423ms
