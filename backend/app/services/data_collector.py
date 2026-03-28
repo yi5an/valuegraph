@@ -66,33 +66,39 @@ class AkShareCollector:
 
     @staticmethod
     def _safe_float(val) -> Optional[float]:
-        """安全转换为 float"""
-        if val is None or (isinstance(val, float) and (pd.isna(val) or pd.isinf(val))):
+        """安全转换为 float（支持百分比字符串如 '24.64%'）"""
+        if val is None or val is False or (isinstance(val, float) and (pd.isna(val) or pd.isinf(val))):
             return None
         try:
+            if isinstance(val, str):
+                val = val.strip().replace('%', '').replace(',', '')
+                if not val or val == '-':
+                    return None
             return float(val)
         except (ValueError, TypeError):
             return None
 
     @staticmethod
     def get_financial_data(stock_code: str) -> List[Dict]:
-        """
-        获取股票财务数据
-        
-        Args:
-            stock_code: 股票代码（如 600519）
-        
-        Returns:
-            财务数据列表
-        """
+        """获取股票财务数据（同花顺数据源）"""
         sf = AkShareCollector._safe_float
         try:
-            # 获取财务分析指标
-            df = ak.stock_financial_analysis_indicator(symbol=stock_code)
+            df = ak.stock_financial_abstract_ths(symbol=stock_code, indicator="按报告期")
             
             financials = []
             for _, row in df.iterrows():
-                report_date = row.get('日期', None)
+                report_date = row.get('报告期', None)
+                
+                # 过滤异常日期
+                if report_date is None:
+                    continue
+                try:
+                    dt = pd.to_datetime(str(report_date))
+                    if dt.year < 1990:
+                        continue
+                except Exception:
+                    continue
+                
                 financials.append({
                     'stock_code': stock_code,
                     'report_date': report_date,
@@ -100,16 +106,16 @@ class AkShareCollector:
                     'roe': sf(row.get('净资产收益率')),
                     'gross_margin': sf(row.get('销售毛利率')),
                     'debt_ratio': sf(row.get('资产负债率')),
-                    'revenue': sf(row.get('营业收入')),
+                    'revenue': sf(row.get('营业总收入')),
                     'net_profit': sf(row.get('净利润')),
-                    'eps': sf(row.get('每股收益')),
+                    'eps': sf(row.get('基本每股收益')),
                     'bvps': sf(row.get('每股净资产')),
-                    'operating_cash_flow': sf(row.get('经营现金流')),
-                    'revenue_yoy': sf(row.get('营业收入同比增长率')),
+                    'operating_cash_flow': sf(row.get('每股经营现金流')),
+                    'revenue_yoy': sf(row.get('营业总收入同比增长率')),
                     'net_profit_yoy': sf(row.get('净利润同比增长率')),
                 })
             
-            logger.info(f"✅ 获取 {stock_code} 财务数据成功，共 {len(financials)} 条")
+            logger.info(f"✅ 获取 {stock_code} 财务数据成功（同花顺），共 {len(financials)} 条")
             return financials
         
         except Exception as e:
