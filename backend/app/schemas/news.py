@@ -35,3 +35,16 @@ class SyncResponse(BaseModel):
     success: bool
     message: str
     count: int
+
+
+class RelatedNewsItem(NewsItem):
+    """关联新闻项（包含关联实体信息）"""
+    related_entities: Optional[List[Dict[str, Any]]] = None  # 关联实体列表
+    relation_types: Optional[List[str]] = None  # 关系类型列表
+
+
+class RelatedNewsResponse(BaseModel):
+    """关联新闻响应"""
+    success: bool = True
+    data: List[RelatedNewsItem]
+    meta: Optional[Dict[str, Any]] = None
