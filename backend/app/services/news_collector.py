@@ -100,3 +100,24 @@ class NewsCollector:
         except Exception as e:
             logger.error(f"获取热点新闻失败: {str(e)}")
             return []
+
+    @staticmethod
+    def fetch_36kr_news(limit=30):
+        """36氪科技新闻（RSS）"""
+        import feedparser
+        try:
+            feed = feedparser.parse("https://36kr.com/feed")
+            results = []
+            for entry in feed.entries[:limit]:
+                results.append({
+                    "title": entry.get("title", ""),
+                    "content": entry.get("summary", ""),
+                    "source": "36氪",
+                    "keywords": "",
+                    "published_at": entry.get("published", ""),
+                    "url": entry.get("link", ""),
+                })
+            return results
+        except Exception as e:
+            logging.getLogger(__name__).error(f"36氪采集失败: {e}")
+            return []

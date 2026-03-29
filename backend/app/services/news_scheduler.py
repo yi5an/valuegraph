@@ -39,6 +39,15 @@ class NewsScheduler:
             replace_existing=True
         )
         
+        # 每 2 小时采集 36氪科技新闻
+        self.scheduler.add_job(
+            self._sync_36kr_news,
+            trigger=IntervalTrigger(hours=2),
+            id='sync_36kr',
+            name='同步36氪新闻',
+            replace_existing=True
+        )
+        
         self.scheduler.start()
         logger.info("📰 新闻采集调度器已启动")
     
@@ -191,6 +200,46 @@ class NewsScheduler:
                 db.close()
         except Exception as e:
             logger.error(f"实体抽取失败: {e}")
+    
+    async def _sync_36kr_news(self):
+        """采集36氪科技新闻"""
+        logger.info("📰 开始采集36氪新闻...")
+        try:
+            from app.services.news_collector import NewsCollector
+            from app.database import SessionLocal
+            from app.models.news import News
+            
+            collector = NewsCollector()
+            db = SessionLocal()
+            try:
+                news_list = collector.fetch_36kr_news(limit=30)
+                if not news_list:
+                    logger.info("无新36氪新闻")
+                    return
+                
+                new_count = 0
+                for item in news_list:
+                    existing = db.query(News).filter(News.url == item.get('url')).first()
+                    if existing:
+                        continue
+                    news = News(
+                        title=item.get('title', ''),
+                        content=item.get('content', ''),
+                        source='36氪',
+                        keywords=item.get('keywords', ''),
+                        published_at=item.get('published_at', ''),
+                        url=item.get('url', ''),
+                        stock_code=None
+                    )
+                    db.add(news)
+                    new_count += 1
+                
+                db.commit()
+                logger.info(f"📰 36氪新闻采集完成：新增 {new_count} 条")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"36氪新闻采集失败: {e}")
     
     def shutdown(self):
         self.scheduler.shutdown()
