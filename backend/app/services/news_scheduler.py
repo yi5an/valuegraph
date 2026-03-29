@@ -12,37 +12,37 @@ class NewsScheduler:
     
     def start(self):
         """启动定时任务"""
-        # 每 30 分钟采集热点新闻
+        # 每 10 分钟采集热点新闻
         self.scheduler.add_job(
             self._sync_hot_news,
-            trigger=IntervalTrigger(minutes=30),
+            trigger=IntervalTrigger(minutes=10),
             id='sync_hot_news',
             name='同步热点新闻',
             replace_existing=True
         )
         
-        # 每 2 小时采集自选股新闻（高ROE股票）
+        # 每 30 分钟采集自选股新闻（高ROE股票）
         self.scheduler.add_job(
             self._sync_stock_news,
-            trigger=IntervalTrigger(hours=2),
+            trigger=IntervalTrigger(minutes=30),
             id='sync_stock_news',
             name='同步个股新闻',
             replace_existing=True
         )
         
-        # 每 2 小时对最新新闻做实体抽取和关系录入
+        # 每 30 分钟对最新新闻做实体抽取和关系录入
         self.scheduler.add_job(
             self._process_new_entities,
-            trigger=IntervalTrigger(hours=2),
+            trigger=IntervalTrigger(minutes=30),
             id='process_entities',
             name='实体抽取与关系录入',
             replace_existing=True
         )
         
-        # 每 2 小时采集 36氪科技新闻
+        # 每 1 小时采集 36氪科技新闻
         self.scheduler.add_job(
             self._sync_36kr_news,
-            trigger=IntervalTrigger(hours=2),
+            trigger=IntervalTrigger(hours=1),
             id='sync_36kr',
             name='同步36氪新闻',
             replace_existing=True
