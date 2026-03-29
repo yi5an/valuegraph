@@ -9,7 +9,7 @@ from app.schemas.news import NewsItem, NewsResponse, SyncResponse, RelatedNewsIt
 from app.services.news_collector import NewsCollector
 from app.services.sentiment_analyzer import SentimentAnalyzer
 from app.services.knowledge_graph import KnowledgeGraphService
-from app.services.entity_extractor import EntityExtractor
+from app.services.entity_extractor import EntityExtractor, POLICY_KEYWORDS
 from app.models.news import News
 from app.models.stock import Stock
 from app.utils.rate_limiter import limiter
@@ -177,7 +177,7 @@ async def get_hot_news(
 ):
     """
     获取热点新闻（带情感分析）
-    
+
     - 先查询数据库缓存（24小时内）
     - 如果没有缓存，实时抓取财联社新闻
     - 每条新闻包含情感分析结果
@@ -185,7 +185,7 @@ async def get_hot_news(
     try:
         # 尝试从缓存获取
         cached_news = get_cached_news(db, stock_code=None)
-        
+
         if cached_news:
             # 有缓存，直接返回
             data = [NewsItem.from_orm(news) for news in cached_news]
@@ -196,21 +196,21 @@ async def get_hot_news(
                 data=data,
                 meta={'source': 'cache', 'count': len(data)}
             )
-        
+
         # 无缓存，实时抓取
         logger.info("未找到热点新闻缓存，开始实时抓取")
         news_list = NewsCollector.fetch_hot_news()
-        
+
         if not news_list:
             return NewsResponse(
                 success=True,
                 data=[],
                 meta={'source': 'realtime', 'count': 0, 'message': '未找到热点新闻'}
             )
-        
+
         # 保存到数据库
         save_news_to_db(db, news_list)
-        
+
         # 返回结果
         data = [NewsItem(**news) for news in news_list]
         # 添加情感分析
@@ -220,10 +220,61 @@ async def get_hot_news(
             data=data,
             meta={'source': 'realtime', 'count': len(data)}
         )
-        
+
     except Exception as e:
         logger.error(f"获取热点新闻失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"获取热点新闻失败: {str(e)}")
+
+
+@router.get("/policy", response_model=NewsResponse)
+async def get_policy_news(
+    request: Request,
+    limit: int = 20,
+    db: Session = Depends(get_db)
+):
+    """
+    获取政策相关新闻
+
+    - 从数据库中搜索标题或内容包含政策关键词的新闻
+    - 返回最新的政策相关新闻
+    - 每条新闻包含情感分析结果
+
+    - **limit**: 返回数量（默认 20）
+    """
+    try:
+        # 构建 OR 查询条件：标题或内容包含任意政策关键词
+        from sqlalchemy import or_
+
+        # 构建所有关键词的 LIKE 条件
+        conditions = []
+        for keyword in POLICY_KEYWORDS:
+            conditions.append(News.title.contains(keyword))
+            conditions.append(News.content.contains(keyword))
+
+        # 执行查询
+        news_items = db.query(News).filter(
+            or_(*conditions)
+        ).order_by(News.created_at.desc()).limit(limit).all()
+
+        # 转换为响应格式
+        data = [NewsItem.from_orm(news) for news in news_items]
+
+        # 添加情感分析
+        data = await add_sentiment_to_news(data)
+
+        return NewsResponse(
+            success=True,
+            data=data,
+            meta={
+                'source': 'database',
+                'count': len(data),
+                'keywords_matched': len(POLICY_KEYWORDS)
+            }
+        )
+
+    except Exception as e:
+        logger.error(f"获取政策新闻失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"获取政策新闻失败: {str(e)}")
 
 
 @router.post("/sync", response_model=SyncResponse)
