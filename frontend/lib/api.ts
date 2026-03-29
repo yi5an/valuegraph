@@ -4,7 +4,8 @@ import {
   ShareholderRecord,
   Stock,
   StockFilters,
-  NewsItem
+  NewsItem,
+  KGResponse
 } from "@/lib/types";
 
 /**
@@ -358,5 +359,65 @@ export async function getHotNews(): Promise<NewsItem[] | null> {
   } catch (error) {
     console.error("getHotNews error:", error);
     return null;
+  }
+}
+
+/**
+ * Fetch knowledge graph data.
+ */
+export async function getGraphData(name: string, depth = 2): Promise<KGResponse> {
+  try {
+    const res = await fetch(`/api/kg/graph/${encodeURIComponent(name)}?depth=${depth}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch graph data");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getGraphData error:", error);
+    return { success: false, data: null };
+  }
+}
+
+/**
+ * Fetch supply chain data.
+ */
+export async function getSupplyChain(name: string, direction = 'upstream'): Promise<KGResponse> {
+  try {
+    const res = await fetch(`/api/kg/supply-chain/${encodeURIComponent(name)}?direction=${direction}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch supply chain data");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getSupplyChain error:", error);
+    return { success: false, data: null };
+  }
+}
+
+/**
+ * Fetch risk propagation data.
+ */
+export async function getRiskPropagation(name: string, depth = 3): Promise<KGResponse> {
+  try {
+    const res = await fetch(`/api/kg/risk/${encodeURIComponent(name)}?depth=${depth}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch risk propagation data");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getRiskPropagation error:", error);
+    return { success: false, data: null };
   }
 }

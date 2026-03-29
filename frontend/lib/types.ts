@@ -93,3 +93,23 @@ export interface NewsResponse {
   success: boolean;
   data: NewsItem[] | null;
 }
+
+// Knowledge Graph types
+export interface KGNode {
+  id: string;
+  name: string;
+  type: string;  // company, person, stock, industry, event
+  properties: Record<string, any>;
+}
+
+export interface KGEdge {
+  source: string;
+  target: string;
+  type: string;  // RELATED_TO, invests_in, supplies_to, competes_with
+  properties: Record<string, any>;
+}
+
+export interface KGResponse {
+  success: boolean;
+  data: { nodes: KGNode[]; edges: KGEdge[] } | null;
+}
