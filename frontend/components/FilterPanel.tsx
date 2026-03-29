@@ -1,16 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { StockFilters, SlidersHorizontal, ChevronDown } from "lucide-react";
-
-interface AdvancedFilters extends StockFilters {
-  grossMarginMin?: number;
-  sortBy?: "score" | "roe" | "pe" | "market_cap";
-}
+import { SlidersHorizontal, ChevronDown } from "lucide-react";
+import { StockFilters } from "@/lib/types";
 
 interface FilterPanelProps {
-  filters: AdvancedFilters;
-  onChange: (filters: AdvancedFilters) => void;
+  filters: StockFilters;
+  onChange: (filters: StockFilters) => void;
 }
 
 const SORT_OPTIONS = [
@@ -28,10 +24,16 @@ export function FilterPanel({
   onChange
 }: FilterPanelProps): JSX.Element {
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [grossMarginMin, setGrossMarginMin] = useState(0);
+  const [sortBy, setSortBy] = useState<string>("score");
 
   const handleApplyFilters = () => {
-    // 触发筛选，由于 useEffect 监听 filters 变化，会自动重新加载
-    onChange({ ...filters });
+    // 触发筛选，将高级筛选合并到主 filters 中
+    onChange({
+      ...filters,
+      grossMarginMin: grossMarginMin > 0 ? grossMarginMin : undefined,
+      sortBy: sortBy as StockFilters["sortBy"]
+    });
   };
 
   return (
@@ -114,18 +116,16 @@ export function FilterPanel({
             <label className="block">
               <div className="mb-3 flex items-center justify-between text-sm text-slate-300">
                 <span>毛利率下限</span>
-                <span>{filters.grossMarginMin || 0}%</span>
+                <span>{grossMarginMin}%</span>
               </div>
               <input
                 aria-label="毛利率下限"
                 className="w-full accent-positive"
                 max={100}
                 min={0}
-                onChange={(event) =>
-                  onChange({ ...filters, grossMarginMin: Number(event.target.value) })
-                }
+                onChange={(event) => setGrossMarginMin(Number(event.target.value))}
                 type="range"
-                value={filters.grossMarginMin || 0}
+                value={grossMarginMin}
               />
             </label>
 
@@ -138,10 +138,8 @@ export function FilterPanel({
                 <select
                   aria-label="排序字段"
                   className="w-full appearance-none rounded-xl border border-white/10 bg-slate-900 px-4 py-2 text-sm text-white focus:border-primary focus:outline-none"
-                  value={filters.sortBy || "score"}
-                  onChange={(e) =>
-                    onChange({ ...filters, sortBy: e.target.value as AdvancedFilters["sortBy"] })
-                  }
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
                 >
                   {SORT_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>

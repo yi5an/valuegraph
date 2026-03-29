@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { BarChart3, PieChart, Star, GitCompare, Network, Newspaper } from "lucide-react";
 
-const items = [
+const items: Array<{ href: "/" | "/compare" | "/financial" | "/shareholders"; label: string; icon: typeof Star }> = [
   { href: "/", label: "推荐", icon: Star },
   { href: "/compare", label: "对比", icon: GitCompare },
   { href: "/financial", label: "财报", icon: BarChart3 },

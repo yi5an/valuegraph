@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { BarChart3, PieChart, Star, Newspaper, Network, GitCompare, MessageCircle } from "lucide-react";
+import { BarChart3, PieChart, Star, Newspaper, Network, GitCompare, MessageCircle, LucideIcon } from "lucide-react";
 
-const items = [
+const items: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "/", label: "价值推荐", icon: Star },
   { href: "/compare", label: "股票对比", icon: GitCompare },
   { href: "/financial", label: "财报分析", icon: BarChart3 },

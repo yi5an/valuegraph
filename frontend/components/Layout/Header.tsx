@@ -5,7 +5,7 @@ import { Menu, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 
-const navItems = [
+const navItems: Array<{ href: "/" | "/financial" | "/shareholders"; label: string }> = [
   { href: "/", label: "价值推荐" },
   { href: "/financial", label: "财报分析" },
   { href: "/shareholders", label: "持股查询" }
