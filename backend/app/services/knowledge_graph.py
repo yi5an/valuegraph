@@ -4,6 +4,8 @@
 from neo4j import GraphDatabase
 from typing import List, Dict, Any, Optional
 import logging
+import networkx as nx
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -387,3 +389,64 @@ class KnowledgeGraphService:
         except Exception as e:
             logger.error(f"获取统计信息失败: {e}")
             return {'nodes': 0, 'relationships': 0}
+    
+    def compute_pagerank(self, top_n: int = 20) -> List[Dict[str, Any]]:
+        """
+        计算实体影响力排名（PageRank算法）
+        
+        使用 NetworkX 实现 PageRank（兼容 Neo4j Community 版）
+        
+        Args:
+            top_n: 返回前 N 个实体
+        
+        Returns:
+            [{name, score, type}]
+        """
+        try:
+            # 1. 从 Neo4j 导出图数据到 NetworkX
+            G = nx.DiGraph()
+            
+            # 获取所有节点
+            with self.driver.session() as session:
+                nodes_result = session.run("MATCH (n) RETURN n.name as name, n.type as type, labels(n) as labels")
+                
+                node_types = {}
+                for record in nodes_result:
+                    name = record['name']
+                    node_type = record['type'] or (record['labels'][0] if record['labels'] else 'unknown')
+                    node_types[name] = node_type
+                    G.add_node(name)
+                
+                # 获取所有关系
+                edges_result = session.run("MATCH (a)-[r]->(b) RETURN a.name as from_name, b.name as to_name")
+                
+                for record in edges_result:
+                    from_name = record['from_name']
+                    to_name = record['to_name']
+                    if from_name and to_name:
+                        G.add_edge(from_name, to_name)
+            
+            if G.number_of_nodes() == 0:
+                logger.warning("图谱为空，无法计算 PageRank")
+                return []
+            
+            # 2. 计算 PageRank
+            pagerank_scores = nx.pagerank(G, alpha=0.85, max_iter=100)
+            
+            # 3. 排序并返回 top_n
+            sorted_nodes = sorted(pagerank_scores.items(), key=lambda x: x[1], reverse=True)[:top_n]
+            
+            result = []
+            for name, score in sorted_nodes:
+                result.append({
+                    'name': name,
+                    'score': round(score, 6),
+                    'type': node_types.get(name, 'unknown')
+                })
+            
+            logger.info(f"✅ PageRank 计算完成，返回前 {len(result)} 个实体")
+            return result
+        
+        except Exception as e:
+            logger.error(f"❌ PageRank 计算失败: {e}")
+            return []

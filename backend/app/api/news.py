@@ -7,10 +7,12 @@ from typing import Optional
 from app.database import SessionLocal, get_db
 from app.schemas.news import NewsItem, NewsResponse, SyncResponse
 from app.services.news_collector import NewsCollector
+from app.services.sentiment_analyzer import SentimentAnalyzer
 from app.models.news import News
 from app.utils.rate_limiter import limiter
 from datetime import datetime, timedelta
 import logging
+import asyncio
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -75,6 +77,48 @@ def save_news_to_db(db: Session, news_list: list):
     db.commit()
 
 
+async def add_sentiment_to_news(news_items: list) -> list:
+    """
+    为新闻列表添加情感分析
+    
+    Args:
+        news_items: 新闻项列表
+        
+    Returns:
+        添加了 sentiment 字段的新闻列表
+    """
+    analyzer = SentimentAnalyzer()
+    
+    try:
+        # 批量分析情感
+        for item in news_items:
+            try:
+                # 合并标题和内容进行分析
+                text = f"{item.title} {item.content or ''}"
+                sentiment = await analyzer.analyze(text)
+                
+                # 将 sentiment 添加到 NewsItem
+                # 由于 NewsItem 是 Pydantic 模型，需要转换为字典再添加
+                if hasattr(item, '__dict__'):
+                    item.__dict__['sentiment'] = sentiment
+                else:
+                    # 直接设置属性（Pydantic 模型）
+                    item.sentiment = sentiment
+                    
+            except Exception as e:
+                logger.warning(f"情感分析失败: {e}")
+                # 设置默认值
+                item.sentiment = {
+                    'sentiment': 'neutral',
+                    'score': 0.5,
+                    'keywords': []
+                }
+    finally:
+        await analyzer.close()
+    
+    return news_items
+
+
 @router.get("/stock/{stock_code}", response_model=NewsResponse)
 async def get_stock_news(
     request: Request,
@@ -82,10 +126,11 @@ async def get_stock_news(
     db: Session = Depends(get_db)
 ):
     """
-    获取个股新闻
+    获取个股新闻（带情感分析）
     
     - 先查询数据库缓存（24小时内）
     - 如果没有缓存，实时抓取东方财富新闻
+    - 每条新闻包含情感分析结果
     """
     try:
         # 尝试从缓存获取
@@ -94,6 +139,8 @@ async def get_stock_news(
         if cached_news:
             # 有缓存，直接返回
             data = [NewsItem.from_orm(news) for news in cached_news]
+            # 添加情感分析
+            data = await add_sentiment_to_news(data)
             return NewsResponse(
                 success=True,
                 data=data,
@@ -116,6 +163,8 @@ async def get_stock_news(
         
         # 返回结果
         data = [NewsItem(**news) for news in news_list]
+        # 添加情感分析
+        data = await add_sentiment_to_news(data)
         return NewsResponse(
             success=True,
             data=data,
@@ -133,10 +182,11 @@ async def get_hot_news(
     db: Session = Depends(get_db)
 ):
     """
-    获取热点新闻
+    获取热点新闻（带情感分析）
     
     - 先查询数据库缓存（24小时内）
     - 如果没有缓存，实时抓取财联社新闻
+    - 每条新闻包含情感分析结果
     """
     try:
         # 尝试从缓存获取
@@ -145,6 +195,8 @@ async def get_hot_news(
         if cached_news:
             # 有缓存，直接返回
             data = [NewsItem.from_orm(news) for news in cached_news]
+            # 添加情感分析
+            data = await add_sentiment_to_news(data)
             return NewsResponse(
                 success=True,
                 data=data,
@@ -167,6 +219,8 @@ async def get_hot_news(
         
         # 返回结果
         data = [NewsItem(**news) for news in news_list]
+        # 添加情感分析
+        data = await add_sentiment_to_news(data)
         return NewsResponse(
             success=True,
             data=data,

@@ -2,7 +2,7 @@
 新闻相关的 Pydantic 模型
 """
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 
@@ -17,6 +17,7 @@ class NewsItem(BaseModel):
     published_at: Optional[str] = None
     url: Optional[str] = None
     created_at: Optional[datetime] = None
+    sentiment: Optional[Dict[str, Any]] = None  # 情感分析结果
     
     class Config:
         from_attributes = True  # Pydantic v2 语法（原 orm_mode）

@@ -41,10 +41,10 @@ class SyncNewsResponse(BaseModel):
 
 # ========== API 端点 ==========
 
-@router.post("/extract", response_model=ExtractResponse, summary="对新闻做实体抽取")
-def extract_entities(request: ExtractRequest, db: Session = Depends(get_db)):
+@router.post("/extract", response_model=ExtractResponse, summary="对新闻做实体抽取（使用 LLM）")
+async def extract_entities(request: ExtractRequest, db: Session = Depends(get_db)):
     """
-    对新闻做实体抽取
+    对新闻做实体抽取（优先使用 LLM，失败则 fallback 到规则）
     
     - **news_id**: 新闻ID（如果提供，将从数据库读取新闻）
     - **title**: 新闻标题（如果未提供news_id，则必须提供）
@@ -68,12 +68,12 @@ def extract_entities(request: ExtractRequest, db: Session = Depends(get_db)):
     if not title:
         raise HTTPException(status_code=400, detail="必须提供 title 或 news_id")
     
-    # 执行实体抽取
+    # 执行实体抽取（使用 LLM）
     kg_service = KnowledgeGraphService()
     extractor = EntityExtractor(db, kg_service)
     
     try:
-        result = extractor.extract_from_news(
+        result = await extractor.extract_from_news(
             title=title,
             content=content or '',
             stock_code=stock_code
@@ -85,7 +85,7 @@ def extract_entities(request: ExtractRequest, db: Session = Depends(get_db)):
             message=f"成功提取 {len(result['entities'])} 个实体, {len(result['relations'])} 个关系"
         )
     finally:
-        extractor.close()
+        await extractor.close()
 
 
 @router.get("/entity/{name}", summary="查询实体详情和关系")
@@ -193,10 +193,10 @@ def find_path(
         kg_service.close()
 
 
-@router.post("/sync_news", response_model=SyncNewsResponse, summary="批量对已入库新闻做实体抽取")
-def sync_news(db: Session = Depends(get_db)):
+@router.post("/sync_news", response_model=SyncNewsResponse, summary="批量对已入库新闻做实体抽取（使用 LLM）")
+async def sync_news(db: Session = Depends(get_db)):
     """
-    批量对已入库新闻做实体抽取
+    批量对已入库新闻做实体抽取（优先使用 LLM，失败则 fallback 到规则）
     
     将处理 news 表中的所有新闻，提取实体和关系并写入 Neo4j
     """
@@ -222,12 +222,12 @@ def sync_news(db: Session = Depends(get_db)):
         for news in news_list
     ]
     
-    # 批量抽取
+    # 批量抽取（使用 LLM）
     kg_service = KnowledgeGraphService()
     extractor = EntityExtractor(db, kg_service)
     
     try:
-        result = extractor.extract_from_news_list(news_data)
+        result = await extractor.extract_from_news_list(news_data)
         
         return SyncNewsResponse(
             processed=result['processed'],
@@ -239,7 +239,7 @@ def sync_news(db: Session = Depends(get_db)):
                    f"{result['total_relations']} 个关系"
         )
     finally:
-        extractor.close()
+        await extractor.close()
 
 
 @router.get("/stats", summary="获取图谱统计信息")
@@ -252,6 +252,31 @@ def get_stats():
         return {
             'status': 'ok',
             'stats': stats
+        }
+    finally:
+        kg_service.close()
+
+
+@router.get("/influence", summary="影响力排名（PageRank）")
+def get_influence_ranking(
+    top: int = Query(20, ge=1, le=100, description="返回前 N 个实体")
+):
+    """
+    获取实体影响力排名（基于 PageRank 算法）
+    
+    - **top**: 返回前 N 个实体（1-100）
+    
+    返回格式：[{name, score, type}]
+    """
+    kg_service = KnowledgeGraphService()
+    
+    try:
+        ranking = kg_service.compute_pagerank(top_n=top)
+        
+        return {
+            'success': True,
+            'data': ranking,
+            'total': len(ranking)
         }
     finally:
         kg_service.close()

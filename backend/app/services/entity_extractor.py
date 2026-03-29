@@ -1,10 +1,12 @@
 """
-实体抽取服务 - 从新闻中提取实体和关系（MVP 规则方案）
+实体抽取服务 - 从新闻中提取实体和关系
+优先使用 LLM（Ollama），失败则 fallback 到规则匹配
 """
 from typing import List, Dict, Any, Optional, Tuple
 from sqlalchemy.orm import Session
 from app.models.stock import Stock
 from app.services.knowledge_graph import KnowledgeGraphService
+from app.services.llm_extractor import LLMExtractor
 import logging
 import re
 
@@ -24,6 +26,7 @@ class EntityExtractor:
         """
         self.db = db
         self.kg_service = kg_service or KnowledgeGraphService()
+        self.llm_extractor = LLMExtractor()
         self._stock_names = None
         self._stock_map = None
         
@@ -104,9 +107,9 @@ class EntityExtractor:
         # 默认返回共现关系
         return 'RELATED_TO'
     
-    def extract_from_news(self, title: str, content: str, stock_code: Optional[str] = None) -> Dict[str, Any]:
+    async def extract_from_news(self, title: str, content: str, stock_code: Optional[str] = None) -> Dict[str, Any]:
         """
-        从新闻中抽取实体和关系
+        从新闻中抽取实体和关系（优先 LLM，失败则用规则）
         
         Args:
             title: 新闻标题
@@ -121,6 +124,38 @@ class EntityExtractor:
         """
         # 合并标题和内容
         full_text = f"{title} {content or ''}"
+        
+        # 尝试使用 LLM 抽取
+        try:
+            llm_result = await self.llm_extractor.extract(full_text)
+            
+            if llm_result['entities'] or llm_result['relations']:
+                # LLM 抽取成功
+                logger.info(f"[LLM] 从新闻中提取 {len(llm_result['entities'])} 个实体, {len(llm_result['relations'])} 个关系: {title[:50]}")
+                return llm_result
+        except Exception as e:
+            logger.warning(f"LLM 抽取失败，fallback 到规则: {e}")
+        
+        # Fallback: 使用规则抽取
+        logger.info(f"[规则] 使用规则抽取: {title[:50]}")
+        return await self._extract_with_rules(full_text, title, content, stock_code)
+    
+    async def _extract_with_rules(self, full_text: str, title: str, content: str, stock_code: Optional[str] = None) -> Dict[str, Any]:
+        """
+        使用规则抽取实体和关系（fallback 方案）
+        
+        Args:
+            full_text: 完整文本（标题+内容）
+            title: 新闻标题
+            content: 新闻内容
+            stock_code: 关联股票代码（可选）
+        
+        Returns:
+            {
+                'entities': [{'name': '...', 'type': 'company', ...}],
+                'relations': [{'from': '...', 'to': '...', 'type': '...', ...}]
+            }
+        """
         
         # 提取公司名称
         companies = self.extract_companies(full_text)
@@ -197,7 +232,7 @@ class EntityExtractor:
             'relations': relations
         }
     
-    def extract_from_news_list(self, news_list: List[Dict[str, Any]]) -> Dict[str, Any]:
+    async def extract_from_news_list(self, news_list: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
         批量从新闻列表中抽取实体和关系
         
@@ -214,7 +249,7 @@ class EntityExtractor:
         
         for news in news_list:
             try:
-                result = self.extract_from_news(
+                result = await self.extract_from_news(
                     title=news.get('title', ''),
                     content=news.get('content', ''),
                     stock_code=news.get('stock_code')
@@ -235,7 +270,9 @@ class EntityExtractor:
             'errors': errors
         }
     
-    def close(self):
-        """关闭知识图谱连接"""
+    async def close(self):
+        """关闭知识图谱连接和 LLM 客户端"""
         if self.kg_service:
             self.kg_service.close()
+        if self.llm_extractor:
+            await self.llm_extractor.close()

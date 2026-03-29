@@ -3,10 +3,11 @@
 """
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Optional, List
 from app.database import SessionLocal, get_db
 from app.schemas.stock import RecommendResponse, StockRecommend
 from app.services.recommendation import RecommendationService
+from app.services.data_collector import AkShareCollector
 from app.utils.rate_limiter import limiter
 from app.models.stock import Stock
 
@@ -105,3 +106,87 @@ async def sync_stock_list(
     
     background_tasks.add_task(do_sync)
     return {'success': True, 'message': '同步任务已提交', 'count': 0}
+
+
+@router.get("/compare")
+async def compare_stocks(
+    request: Request,
+    codes: str = Query(..., description="股票代码列表（逗号分隔，如 600519,000858,601318）"),
+    db: Session = Depends(get_db)
+):
+    """
+    股票对比分析
+    
+    - **codes**: 股票代码列表（逗号分隔）
+    
+    返回多只股票的财务指标横向对比数据
+    """
+    try:
+        # 解析股票代码
+        stock_codes = [code.strip() for code in codes.split(',') if code.strip()]
+        
+        if not stock_codes:
+            raise HTTPException(status_code=400, detail="请提供至少一个股票代码")
+        
+        if len(stock_codes) > 10:
+            raise HTTPException(status_code=400, detail="一次最多对比 10 只股票")
+        
+        # 获取股票信息
+        stocks_data = []
+        
+        for stock_code in stock_codes:
+            # 查询股票基本信息
+            stock = db.query(Stock).filter(Stock.stock_code == stock_code).first()
+            
+            if not stock:
+                continue
+            
+            # 获取最新财务数据
+            financial_data = AkShareCollector.get_financial_indicator(stock_code)
+            
+            stock_info = {
+                'code': stock_code,
+                'name': stock.name,
+                'market': stock.market,
+            }
+            
+            # 添加财务指标
+            if financial_data:
+                stock_info.update({
+                    'roe': financial_data.get('roe'),
+                    'debt_ratio': financial_data.get('debt_ratio'),
+                    'gross_margin': financial_data.get('gross_margin'),
+                    'revenue': financial_data.get('revenue'),
+                    'net_profit': financial_data.get('net_profit'),
+                    'revenue_yoy': financial_data.get('revenue_yoy'),
+                    'net_profit_yoy': financial_data.get('net_profit_yoy'),
+                    'eps': financial_data.get('eps'),
+                    'bvps': financial_data.get('bvps'),
+                    'operating_cash_flow': financial_data.get('operating_cash_flow'),
+                    'report_date': str(financial_data.get('report_date', ''))
+                })
+            
+            stocks_data.append(stock_info)
+        
+        return {
+            'success': True,
+            'stocks': stocks_data,
+            'total': len(stocks_data),
+            'metrics': [
+                'roe',
+                'debt_ratio',
+                'gross_margin',
+                'revenue',
+                'net_profit',
+                'revenue_yoy',
+                'net_profit_yoy',
+                'eps',
+                'bvps',
+                'operating_cash_flow'
+            ]
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"对比失败: {str(e)}")
