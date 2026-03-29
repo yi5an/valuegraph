@@ -236,9 +236,18 @@ export async function getStocks(
     
     const params = new URLSearchParams({
       market: marketMap[market] || "A",
+      limit: "10",
       min_roe: String(filters.roeMin),
       max_debt_ratio: String(filters.debtMax)
     });
+    
+    // 添加高级筛选参数
+    if (filters.grossMarginMin !== undefined && filters.grossMarginMin > 0) {
+      params.append("min_gross_margin", String(filters.grossMarginMin));
+    }
+    if (filters.sortBy) {
+      params.append("sort_by", filters.sortBy);
+    }
     
     const res = await fetch(`/api/stocks?${params.toString()}`, {
       next: { revalidate: 60 }

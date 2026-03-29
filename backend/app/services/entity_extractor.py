@@ -38,6 +38,15 @@ class EntityExtractor:
             'partner_of': ['合作', '签约', '战略协议', '联合', '携手', '共建'],
             'RELATED_TO': []  # 默认共现关系
         }
+        
+        # 事件类型关键词映射
+        self.event_keywords = {
+            'M&A': ['收购', '并购', '合并', '重组', '并购重组', '兼并', '收购案', '并购案', '私有化', '要约收购'],
+            'earnings': ['财报', '业绩', '年报', '季报', '营收', '净利润', '盈利', '亏损', '业绩预告', '业绩快报', '业绩发布', '财报披露', '业绩大增', '业绩下滑'],
+            'personnel': ['人事变动', '人事调整', '高管离职', '高管变动', 'CEO', '董事长', '总经理', '辞职', '任命', '聘任', '换届', '离职'],
+            'regulation': ['监管', '处罚', '罚款', '监管函', '问询函', '证监会', '银保监会', '政策', '法规', '新规', '监管层', '监管政策', '监管要求'],
+            'litigation': ['诉讼', '起诉', '仲裁', '纠纷', '官司', '索赔', '侵权', '反垄断', '集体诉讼', '法律诉讼', '涉诉']
+        }
     
     def _load_stocks(self) -> Tuple[List[str], Dict[str, str]]:
         """
@@ -107,6 +116,25 @@ class EntityExtractor:
         # 默认返回共现关系
         return 'RELATED_TO'
     
+    def classify_event_type(self, text: str) -> str:
+        """
+        分类新闻事件类型
+        
+        Args:
+            text: 新闻文本
+        
+        Returns:
+            事件类型：M&A, earnings, personnel, regulation, litigation, 或 general
+        """
+        # 按优先级顺序检测（从具体到一般）
+        for event_type, keywords in self.event_keywords.items():
+            for keyword in keywords:
+                if keyword in text:
+                    return event_type
+        
+        # 默认返回普通事件
+        return 'general'
+    
     async def extract_from_news(self, title: str, content: str, stock_code: Optional[str] = None) -> Dict[str, Any]:
         """
         从新闻中抽取实体和关系（优先 LLM，失败则用规则）
@@ -119,11 +147,15 @@ class EntityExtractor:
         Returns:
             {
                 'entities': [{'name': '...', 'type': 'company', ...}],
-                'relations': [{'from': '...', 'to': '...', 'type': '...', ...}]
+                'relations': [{'from': '...', 'to': '...', 'type': '...', ...}],
+                'event_type': 'M&A|earnings|personnel|regulation|litigation|general'
             }
         """
         # 合并标题和内容
         full_text = f"{title} {content or ''}"
+        
+        # 分类事件类型
+        event_type = self.classify_event_type(full_text)
         
         # 尝试使用 LLM 抽取
         try:
@@ -132,13 +164,16 @@ class EntityExtractor:
             if llm_result['entities'] or llm_result['relations']:
                 # LLM 抽取成功
                 logger.info(f"[LLM] 从新闻中提取 {len(llm_result['entities'])} 个实体, {len(llm_result['relations'])} 个关系: {title[:50]}")
+                llm_result['event_type'] = event_type
                 return llm_result
         except Exception as e:
             logger.warning(f"LLM 抽取失败，fallback 到规则: {e}")
         
         # Fallback: 使用规则抽取
         logger.info(f"[规则] 使用规则抽取: {title[:50]}")
-        return await self._extract_with_rules(full_text, title, content, stock_code)
+        result = await self._extract_with_rules(full_text, title, content, stock_code)
+        result['event_type'] = event_type
+        return result
     
     async def _extract_with_rules(self, full_text: str, title: str, content: str, stock_code: Optional[str] = None) -> Dict[str, Any]:
         """

@@ -19,3 +19,38 @@ INFO:     127.0.0.1:36392 - "POST /api/qa/ask HTTP/1.1" 200 OK
 2026-03-29 12:53:06,384 - app.api.qa - INFO - 问题回答完成，数据源: supply_chain
 2026-03-29 12:53:06,384 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
 INFO:     127.0.0.1:40936 - "POST /api/qa/ask HTTP/1.1" 200 OK
+2026-03-29 12:58:12,989 - app.api.qa - INFO - 收到问题: 推荐几只高ROE低负债的股票
+2026-03-29 12:58:12,989 - app.services.knowledge_graph - INFO - Neo4j 连接已建立
+2026-03-29 12:58:15,453 - app.services.recommendation - INFO - ✅ 推荐股票 8 只
+2026-03-29 12:58:25,669 - app.services.rag_service - WARNING - Ollama 调用超时
+2026-03-29 12:58:25,670 - app.api.qa - INFO - 问题回答完成，数据源: recommendation
+2026-03-29 12:58:25,670 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
+INFO:     127.0.0.1:46082 - "POST /api/qa/ask HTTP/1.1" 200 OK
+2026-03-29 12:58:25,700 - app.services.knowledge_graph - INFO - Neo4j 连接已建立
+2026-03-29 12:58:25,762 - app.api.news - INFO - 股票 600519 (贵州茅台) 关联实体: ['伊利股份', '中国平安', '招商银行']
+2026-03-29 12:58:25,764 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
+2026-03-29 12:58:34,632 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:58:34,634 - app.services.sentiment_analyzer - INFO - 情感分析完成: neutral (0.8)
+2026-03-29 12:58:43,509 - app.services.data_collector - WARNING - 获取美股 医药类 失败: '医药类'
+2026-03-29 12:58:43,510 - app.services.data_collector - WARNING - 获取美股 消费类 失败: '消费类'
+2026-03-29 12:58:43,510 - app.services.data_collector - INFO - ✅ 获取美股列表成功，共 50 只股票
+2026-03-29 12:58:43,510 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:58:43,511 - app.services.sentiment_analyzer - INFO - 情感分析完成: negative (0.8)
+INFO:     127.0.0.1:34236 - "GET /api/stocks/recommend?market=US&limit=2 HTTP/1.1" 200 OK
+2026-03-29 12:58:47,234 - app.services.recommendation - INFO - ✅ 推荐股票 3 只
+2026-03-29 12:58:47,247 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:58:47,248 - app.services.sentiment_analyzer - INFO - 情感分析完成: neutral (0.5)
+INFO:     127.0.0.1:44128 - "GET /api/stocks/recommend?roeMin=20&sort_by=roe&limit=3 HTTP/1.1" 200 OK
+2026-03-29 12:58:54,151 - app.services.knowledge_graph - INFO - Neo4j 连接已建立
+2026-03-29 12:58:54,234 - app.api.news - INFO - 股票 600519 (贵州茅台) 关联实体: ['伊利股份', '中国平安', '招商银行']
+2026-03-29 12:58:54,234 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
+2026-03-29 12:58:57,623 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:58:57,624 - app.services.sentiment_analyzer - INFO - 情感分析完成: negative (0.8)
+2026-03-29 12:59:00,819 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:59:00,820 - app.services.sentiment_analyzer - INFO - 情感分析完成: negative (0.8)
+2026-03-29 12:59:12,247 - app.services.data_collector - WARNING - 获取美股 医药类 失败: '医药类'
+2026-03-29 12:59:12,247 - app.services.data_collector - WARNING - 获取美股 消费类 失败: '消费类'
+2026-03-29 12:59:12,247 - app.services.data_collector - INFO - ✅ 获取美股列表成功，共 50 只股票
+2026-03-29 12:59:12,248 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:59:12,249 - app.services.sentiment_analyzer - INFO - 情感分析完成: negative (0.7)
+INFO:     127.0.0.1:34900 - "GET /api/stocks/recommend?market=US&limit=2 HTTP/1.1" 200 OK

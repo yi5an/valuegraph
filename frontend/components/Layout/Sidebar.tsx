@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { BarChart3, PieChart, Star, Newspaper, Network, GitCompare } from "lucide-react";
+import { BarChart3, PieChart, Star, Newspaper, Network, GitCompare, MessageCircle } from "lucide-react";
 
 const items = [
   { href: "/", label: "价值推荐", icon: Star },
@@ -7,7 +7,8 @@ const items = [
   { href: "/financial", label: "财报分析", icon: BarChart3 },
   { href: "/shareholders", label: "持股查询", icon: PieChart },
   { href: "/graph", label: "知识图谱", icon: Network },
-  { href: "/news", label: "新闻", icon: Newspaper }
+  { href: "/news", label: "新闻", icon: Newspaper },
+  { href: "/qa", label: "智能问答", icon: MessageCircle }
 ];
 
 /**

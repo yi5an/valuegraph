@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Link2 } from "lucide-react";
 import { getHotNews, getStockNews } from "@/lib/api";
 import { NewsItem } from "@/lib/types";
+
+interface RelatedNewsItem extends NewsItem {
+  related_entities?: string[];
+  relevance_score?: number;
+}
 
 // 情感标签组件
 function SentimentTag({ sentiment }: { sentiment?: "positive" | "negative" | "neutral" }) {
@@ -31,12 +36,15 @@ function SentimentTag({ sentiment }: { sentiment?: "positive" | "negative" | "ne
 export default function NewsPage(): JSX.Element {
   const [hotNews, setHotNews] = useState<NewsItem[]>([]);
   const [stockNews, setStockNews] = useState<NewsItem[]>([]);
+  const [relatedNews, setRelatedNews] = useState<RelatedNewsItem[]>([]);
   const [stockCode, setStockCode] = useState("");
   const [searchCode, setSearchCode] = useState("");
   const [loadingHot, setLoadingHot] = useState(true);
   const [loadingStock, setLoadingStock] = useState(false);
+  const [loadingRelated, setLoadingRelated] = useState(false);
   const [errorHot, setErrorHot] = useState<string | null>(null);
   const [errorStock, setErrorStock] = useState<string | null>(null);
+  const [errorRelated, setErrorRelated] = useState<string | null>(null);
 
   // Load hot news on mount
   useEffect(() => {
@@ -92,6 +100,30 @@ export default function NewsPage(): JSX.Element {
       .finally(() => {
         if (active) {
           setLoadingStock(false);
+        }
+      });
+
+    // 同时加载关联新闻
+    setLoadingRelated(true);
+    setErrorRelated(null);
+    
+    fetch(`/api/news/related/${searchCode}`)
+      .then(res => res.json())
+      .then((result) => {
+        if (!active) return;
+        if (result.success && result.data) {
+          setRelatedNews(result.data);
+        } else {
+          setRelatedNews([]);
+        }
+      })
+      .catch(() => {
+        if (!active) return;
+        setErrorRelated("关联新闻加载失败");
+      })
+      .finally(() => {
+        if (active) {
+          setLoadingRelated(false);
         }
       });
 
@@ -195,6 +227,67 @@ export default function NewsPage(): JSX.Element {
                 </div>
               </a>
             ))}
+          </div>
+        )}
+
+        {/* 关联新闻分析 */}
+        {searchCode && (
+          <div className="mt-6 pt-6 border-t border-white/10">
+            <div className="flex items-center gap-2 mb-4">
+              <Link2 className="h-5 w-5 text-indigo-400" />
+              <h3 className="text-md font-semibold text-white">关联新闻分析</h3>
+            </div>
+            
+            {loadingRelated && (
+              <div className="text-sm text-slate-300">加载关联新闻中...</div>
+            )}
+            {errorRelated && (
+              <div className="rounded-xl border border-negative/30 bg-negative/10 p-4 text-sm text-negative">
+                {errorRelated}
+              </div>
+            )}
+            {!loadingRelated && !errorRelated && relatedNews.length > 0 && (
+              <div className="space-y-3">
+                {relatedNews.map((item, idx) => (
+                  <a
+                    key={`related-${item.id}-${idx}`}
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-xl border border-indigo-500/20 bg-indigo-500/5 p-4 transition hover:border-indigo-500/40 hover:bg-indigo-500/10"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <h4 className="text-sm font-medium text-white flex-1">{item.title}</h4>
+                      {item.relevance_score !== undefined && (
+                        <span className="text-xs text-indigo-400 bg-indigo-500/20 px-2 py-1 rounded">
+                          相关度 {(item.relevance_score * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
+                      <span>{item.source}</span>
+                      <span>•</span>
+                      <span>{formatTime(item.published_at)}</span>
+                      {item.related_entities && item.related_entities.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <div className="flex gap-1 flex-wrap">
+                            {item.related_entities.slice(0, 3).map((entity, i) => (
+                              <span key={i} className="text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded">
+                                {entity}
+                              </span>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+            {!loadingRelated && !errorRelated && relatedNews.length === 0 && (
+              <div className="text-sm text-slate-400">暂无关联新闻</div>
+            )}
           </div>
         )}
       </section>

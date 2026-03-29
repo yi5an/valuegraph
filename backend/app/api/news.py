@@ -9,6 +9,7 @@ from app.schemas.news import NewsItem, NewsResponse, SyncResponse, RelatedNewsIt
 from app.services.news_collector import NewsCollector
 from app.services.sentiment_analyzer import SentimentAnalyzer
 from app.services.knowledge_graph import KnowledgeGraphService
+from app.services.entity_extractor import EntityExtractor
 from app.models.news import News
 from app.models.stock import Stock
 from app.utils.rate_limiter import limiter
@@ -81,15 +82,16 @@ def save_news_to_db(db: Session, news_list: list):
 
 async def add_sentiment_to_news(news_items: list) -> list:
     """
-    为新闻列表添加情感分析
+    为新闻列表添加情感分析和事件类型
     
     Args:
         news_items: 新闻项列表
         
     Returns:
-        添加了 sentiment 字段的新闻列表
+        添加了 sentiment 和 event_type 字段的新闻列表
     """
     analyzer = SentimentAnalyzer()
+    extractor = EntityExtractor(db=None)  # 仅用于事件分类，不需要 db
     
     try:
         # 只对前3条做情感分析，避免全量阻塞
@@ -97,6 +99,8 @@ async def add_sentiment_to_news(news_items: list) -> list:
             try:
                 # 合并标题和内容进行分析
                 text = f"{item.title} {item.content or ''}"
+                
+                # 情感分析
                 sentiment = await analyzer.analyze(text)
                 
                 # 将 sentiment 添加到 NewsItem
@@ -115,6 +119,17 @@ async def add_sentiment_to_news(news_items: list) -> list:
                     'score': 0.5,
                     'keywords': []
                 }
+        
+        # 为所有新闻添加事件类型（快速规则匹配）
+        for item in news_items:
+            try:
+                text = f"{item.title} {item.content or ''}"
+                event_type = extractor.classify_event_type(text)
+                item.event_type = event_type
+            except Exception as e:
+                logger.warning(f"事件分类失败: {e}")
+                item.event_type = 'general'
+                
     finally:
         await analyzer.close()
     

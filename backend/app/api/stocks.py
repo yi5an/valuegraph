@@ -33,7 +33,7 @@ async def search_stocks(
     return {"success": True, "data": data}
 
 
-@router.get("/recommend", response_model=RecommendResponse)
+@router.get("/recommend")
 async def recommend_stocks(
     request: Request,
     market: str = Query(default="A", description="市场：A, US, HK"),
@@ -77,28 +77,14 @@ async def recommend_stocks(
             sector=sector
         )
 
-        # 构建响应
-        data = [StockRecommend(**rec) for rec in recommendations]
-
-        return RecommendResponse(
-            success=True,
-            data=data,
-            meta={
-                'total': len(data),
-                'page': 1,
-                'limit': limit,
-                'filters': {
-                    'market': market,
-                    'min_roe': min_roe,
-                    'max_debt_ratio': max_debt_ratio,
-                    'industry': industry,
-                    'min_gross_margin': min_gross_margin,
-                    'min_net_profit_growth': min_net_profit_growth,
-                    'sort_by': sort_by,
-                    'sector': sector,
-                }
+        # 构建响应 - 统一格式为 {"success": true, "data": {"recommendations": [...], "total": N}}
+        return {
+            "success": True,
+            "data": {
+                "recommendations": recommendations,
+                "total": len(recommendations)
             }
-        )
+        }
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"推荐失败: {str(e)}")

@@ -18,6 +18,7 @@ class NewsItem(BaseModel):
     url: Optional[str] = None
     created_at: Optional[datetime] = None
     sentiment: Optional[Dict[str, Any]] = None  # 情感分析结果
+    event_type: Optional[str] = None  # 事件类型：M&A, earnings, personnel, regulation, litigation, general
     
     class Config:
         from_attributes = True  # Pydantic v2 语法（原 orm_mode）

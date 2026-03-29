@@ -19,6 +19,8 @@ export interface Stock {
 export interface StockFilters {
   roeMin: number;
   debtMax: number;
+  grossMarginMin?: number;
+  sortBy?: "score" | "roe" | "pe" | "market_cap";
 }
 
 export interface FinancialMetricCard {
