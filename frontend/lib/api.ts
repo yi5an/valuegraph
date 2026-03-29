@@ -3,7 +3,8 @@ import {
   FinancialRecord,
   ShareholderRecord,
   Stock,
-  StockFilters
+  StockFilters,
+  NewsItem
 } from "@/lib/types";
 
 /**
@@ -315,5 +316,47 @@ export async function getShareholders(code: string): Promise<ShareholderRecord> 
   } catch (error) {
     console.error("getShareholders error, falling back to mock data:", error);
     return mockData.shareholders[code] ?? mockData.shareholders["600519"];
+  }
+}
+
+/**
+ * Fetch stock-related news.
+ */
+export async function getStockNews(code: string): Promise<NewsItem[] | null> {
+  try {
+    const res = await fetch(`/api/news/stock/${code}`, {
+      next: { revalidate: 60 }
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch stock news");
+    }
+    
+    const json = await res.json();
+    return json.success ? json.data : null;
+  } catch (error) {
+    console.error("getStockNews error:", error);
+    return null;
+  }
+}
+
+/**
+ * Fetch hot news.
+ */
+export async function getHotNews(): Promise<NewsItem[] | null> {
+  try {
+    const res = await fetch('/api/news/hot', {
+      next: { revalidate: 60 }
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch hot news");
+    }
+    
+    const json = await res.json();
+    return json.success ? json.data : null;
+  } catch (error) {
+    console.error("getHotNews error:", error);
+    return null;
   }
 }

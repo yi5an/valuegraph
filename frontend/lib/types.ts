@@ -77,3 +77,19 @@ export interface ShareholderRecord {
   topHolders: ShareholderRow[];
   institutions: InstitutionHolding[];
 }
+
+export interface NewsItem {
+  id: number;
+  title: string;
+  content: string;
+  source: string;
+  stock_code: string | null;
+  keywords: string | null;
+  published_at: string;
+  url: string;
+}
+
+export interface NewsResponse {
+  success: boolean;
+  data: NewsItem[] | null;
+}

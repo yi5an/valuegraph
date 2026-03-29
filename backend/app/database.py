@@ -34,5 +34,5 @@ def init_db():
     """
     初始化数据库（创建所有表）
     """
-    from app.models import stock, financial, shareholder  # noqa: F401
+    from app.models import stock, financial, shareholder, news  # noqa: F401
     Base.metadata.create_all(bind=engine)

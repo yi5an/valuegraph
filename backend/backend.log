@@ -7,3 +7,26 @@ INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
 2026-03-28 13:40:46,463 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
 INFO:     127.0.0.1:40774 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41330 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41808 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36180 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34648 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:39270 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33286 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40648 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:38790 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50470 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48778 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:43654 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60094 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33476 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55374 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34724 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:33716 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34864 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51196 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57218 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55952 - "GET /health HTTP/1.1" 200 OK
+2026-03-29 09:48:43,695 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
+INFO:     127.0.0.1:55966 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK
