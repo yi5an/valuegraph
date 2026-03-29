@@ -106,3 +106,20 @@ getFinancials error, falling back to mock data: TypeError: Failed to parse URL f
  GET / 200 in 443ms
  GET / 200 in 32ms
  GET / 200 in 26ms
+ GET / 200 in 27ms
+ GET / 200 in 26ms
+ ✓ Compiled in 309ms (828 modules)
+ ✓ Compiled in 273ms (828 modules)
+ ✓ Compiled in 246ms (828 modules)
+ ✓ Compiled in 227ms (828 modules)
+ ✓ Compiled in 191ms (828 modules)
+ ✓ Compiled in 500ms (828 modules)
+ ✓ Compiled in 485ms (828 modules)
+ ✓ Compiled in 207ms (828 modules)
+ ✓ Compiled in 280ms (830 modules)
+ ✓ Compiled in 264ms (830 modules)
+ ✓ Compiled in 193ms (830 modules)
+ ✓ Compiled in 627ms (831 modules)
+ ✓ Compiled in 406ms (831 modules)
+ ✓ Compiled in 186ms (831 modules)
+ ✓ Compiled in 176ms (831 modules)

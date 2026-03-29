@@ -1,32 +1,21 @@
-INFO:     Started server process [2854215]
+INFO:     Started server process [3988762]
 INFO:     Waiting for application startup.
-2026-03-28 13:40:44,073 - app.main - INFO - 🚀 ValueGraph 后端启动中...
-2026-03-28 13:40:44,079 - app.main - INFO - ✅ 数据库初始化完成
-2026-03-28 13:40:44,079 - app.main - INFO - ✅ 应用启动成功 - ValueGraph v1.0.0
+2026-03-29 12:52:15,283 - app.main - INFO - 🚀 ValueGraph 后端启动中...
+2026-03-29 12:52:15,285 - app.main - INFO - ✅ 数据库初始化完成
+2026-03-29 12:52:15,285 - app.main - INFO - ✅ 应用启动成功 - ValueGraph v1.0.0
 INFO:     Application startup complete.
 INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
-2026-03-28 13:40:46,463 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
-INFO:     127.0.0.1:40774 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK
-INFO:     127.0.0.1:41330 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:41808 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:36180 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34648 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:39270 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33286 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:40648 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:38790 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:50470 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:48778 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:43654 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:60094 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33476 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55374 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:56718 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34724 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:33716 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:34864 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:51196 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:57218 - "GET /health HTTP/1.1" 200 OK
-INFO:     127.0.0.1:55952 - "GET /health HTTP/1.1" 200 OK
-2026-03-29 09:48:43,695 - app.services.recommendation - INFO - ✅ 推荐股票 5 只
-INFO:     127.0.0.1:55966 - "GET /api/stocks/recommend?market=A&limit=5&min_roe=15&max_debt_ratio=50 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36376 - "GET /health HTTP/1.1" 200 OK
+2026-03-29 12:52:29,264 - app.api.qa - INFO - 收到问题: 推荐几只高ROE低负债的股票
+2026-03-29 12:52:29,264 - app.services.knowledge_graph - INFO - Neo4j 连接已建立
+2026-03-29 12:52:31,766 - app.services.recommendation - INFO - ✅ 推荐股票 8 只
+2026-03-29 12:52:42,010 - app.services.rag_service - WARNING - Ollama 调用超时
+2026-03-29 12:52:42,010 - app.api.qa - INFO - 问题回答完成，数据源: recommendation
+2026-03-29 12:52:42,010 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
+INFO:     127.0.0.1:36392 - "POST /api/qa/ask HTTP/1.1" 200 OK
+2026-03-29 12:53:04,130 - app.api.qa - INFO - 收到问题: 宁德时代的上游供应商有哪些
+2026-03-29 12:53:04,131 - app.services.knowledge_graph - INFO - Neo4j 连接已建立
+2026-03-29 12:53:06,380 - httpx - INFO - HTTP Request: POST http://localhost:11434/api/generate "HTTP/1.1 200 OK"
+2026-03-29 12:53:06,384 - app.api.qa - INFO - 问题回答完成，数据源: supply_chain
+2026-03-29 12:53:06,384 - app.services.knowledge_graph - INFO - Neo4j 连接已关闭
+INFO:     127.0.0.1:40936 - "POST /api/qa/ask HTTP/1.1" 200 OK

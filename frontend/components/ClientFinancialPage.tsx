@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
-import { Search } from "lucide-react";
-import { getFinancials } from "@/lib/api";
-import { FinancialRecord } from "@/lib/types";
+import { Search, AlertTriangle, AlertCircle, Info } from "lucide-react";
+import { getFinancials, getAnomalies } from "@/lib/api";
+import { FinancialRecord, AnomalyItem } from "@/lib/types";
 import { FinancialChart } from "@/components/FinancialChart";
 import { RadarChart } from "@/components/RadarChart";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,9 @@ export function ClientFinancialPage({
   const [current, setCurrent] = useState<FinancialRecord>(initialData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
+  const [hasAnomaly, setHasAnomaly] = useState(false);
+  const [loadingAnomalies, setLoadingAnomalies] = useState(false);
 
   const filtered = useMemo(
     () =>
@@ -46,17 +49,34 @@ export function ClientFinancialPage({
     setQuery(company);
     setLoading(true);
     setError(null);
+    setLoadingAnomalies(true);
 
     try {
       const data = await getFinancials(code);
       setCurrent(data);
+      
+      // 同时获取异常检测
+      const anomalyResponse = await getAnomalies(code);
+      setHasAnomaly(anomalyResponse.data?.has_anomaly || false);
+      setAnomalies(anomalyResponse.data?.anomalies || []);
     } catch (err) {
       console.error("Failed to load financials:", err);
       setError("加载财报数据失败");
     } finally {
       setLoading(false);
+      setLoadingAnomalies(false);
     }
   };
+  
+  // 初始化时也获取异常
+  useEffect(() => {
+    const fetchInitialAnomalies = async () => {
+      const anomalyResponse = await getAnomalies(initialData.code);
+      setHasAnomaly(anomalyResponse.data?.has_anomaly || false);
+      setAnomalies(anomalyResponse.data?.anomalies || []);
+    };
+    fetchInitialAnomalies();
+  }, [initialData.code]);
 
   return (
     <div className="space-y-8">
@@ -142,6 +162,68 @@ export function ClientFinancialPage({
             <FinancialChart data={current.history} />
             <RadarChart data={current.health} />
           </div>
+
+          {/* 异常检测区域 */}
+          <section className="rounded-3xl border border-white/10 bg-card/80 p-5 shadow-panel">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-400" />
+                财报异常检测
+              </h3>
+              {hasAnomaly && (
+                <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
+                  发现异常
+                </span>
+              )}
+            </div>
+            
+            {loadingAnomalies ? (
+              <div className="text-sm text-slate-400">检测中...</div>
+            ) : anomalies.length > 0 ? (
+              <div className="space-y-3">
+                {anomalies.map((anomaly, index) => (
+                  <div
+                    key={index}
+                    className={cn(
+                      "rounded-xl border p-4",
+                      anomaly.severity === "high" && "border-red-500/30 bg-red-500/10",
+                      anomaly.severity === "medium" && "border-yellow-500/30 bg-yellow-500/10",
+                      anomaly.severity === "low" && "border-blue-500/30 bg-blue-500/10"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                      {anomaly.severity === "high" ? (
+                        <AlertCircle className="h-5 w-5 text-red-400 mt-0.5 shrink-0" />
+                      ) : anomaly.severity === "medium" ? (
+                        <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5 shrink-0" />
+                      ) : (
+                        <Info className="h-5 w-5 text-blue-400 mt-0.5 shrink-0" />
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-sm font-medium text-white">{anomaly.type}</span>
+                          <span className={cn(
+                            "text-xs px-2 py-0.5 rounded",
+                            anomaly.severity === "high" && "bg-red-500/20 text-red-400",
+                            anomaly.severity === "medium" && "bg-yellow-500/20 text-yellow-400",
+                            anomaly.severity === "low" && "bg-blue-500/20 text-blue-400"
+                          )}>
+                            {anomaly.severity === "high" ? "高" : anomaly.severity === "medium" ? "中" : "低"}
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-300">{anomaly.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-green-400">
+                <Info className="h-4 w-4" />
+                未发现明显异常
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

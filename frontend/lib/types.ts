@@ -113,3 +113,65 @@ export interface KGResponse {
   success: boolean;
   data: { nodes: KGNode[]; edges: KGEdge[] } | null;
 }
+
+// Wave 2 新增类型
+export interface CompareResponse {
+  success: boolean;
+  stocks: StockCompareItem[];
+  total: number;
+  metrics: string[];
+}
+
+export interface StockCompareItem {
+  code: string;
+  name: string;
+  market: string;
+  roe?: number;
+  debt_ratio?: number;
+  gross_margin?: number;
+  revenue?: number;
+  net_profit?: number;
+  eps?: number;
+}
+
+export interface AnomalyResponse {
+  success: boolean;
+  data: { has_anomaly: boolean; anomalies: AnomalyItem[] };
+}
+
+export interface AnomalyItem {
+  type: string;
+  description: string;
+  severity: string;
+}
+
+export interface InfluenceResponse {
+  success: boolean;
+  data: InfluenceItem[];
+  total: number;
+}
+
+export interface InfluenceItem {
+  name: string;
+  score: number;
+  type: string;
+}
+
+export interface ShareholderChangeResponse {
+  success: boolean;
+  data: {
+    stock_code: string;
+    changes: ShareholderChangeItem[];
+  };
+}
+
+export interface ShareholderChangeItem {
+  holder_name: string;
+  change_type: string;
+  change_ratio?: number;
+  report_date?: string;
+}
+
+export interface NewsItemWithSentiment extends NewsItem {
+  sentiment?: "positive" | "negative" | "neutral";
+}

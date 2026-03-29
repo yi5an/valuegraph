@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { ArrowUpRight, ArrowDownRight, Minus, RefreshCw } from "lucide-react";
 import { ShareholderTable } from "@/components/ShareholderTable";
-import { getShareholders } from "@/lib/api";
-import { ShareholderRecord } from "@/lib/types";
+import { getShareholders, getShareholderChanges } from "@/lib/api";
+import { ShareholderRecord, ShareholderChangeItem } from "@/lib/types";
 
 const colors = ["#2563EB", "#F97316", "#10B981", "#EF4444"];
 const colorSwatches = ["bg-primary", "bg-accent", "bg-positive", "bg-negative"];
@@ -30,6 +31,23 @@ export function ClientShareholdersPage({
   const [current, setCurrent] = useState<ShareholderRecord>(initialData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [changes, setChanges] = useState<ShareholderChangeItem[]>([]);
+  const [loadingChanges, setLoadingChanges] = useState(false);
+
+  // 加载持股变化
+  const loadChanges = async (code: string) => {
+    setLoadingChanges(true);
+    try {
+      const response = await getShareholderChanges(code);
+      if (response.success && response.data) {
+        setChanges(response.data.changes || []);
+      }
+    } catch (err) {
+      console.error("Failed to load shareholder changes:", err);
+    } finally {
+      setLoadingChanges(false);
+    }
+  };
 
   const handleStockSelect = async (code: string, company: string) => {
     setLoading(true);
@@ -38,6 +56,8 @@ export function ClientShareholdersPage({
     try {
       const data = await getShareholders(code);
       setCurrent(data);
+      // 同时加载持股变化
+      loadChanges(code);
     } catch (err) {
       console.error("Failed to load shareholders:", err);
       setError("加载股东数据失败");
@@ -45,6 +65,11 @@ export function ClientShareholdersPage({
       setLoading(false);
     }
   };
+  
+  // 初始化时加载持股变化
+  useEffect(() => {
+    loadChanges(initialData.code);
+  }, [initialData.code]);
 
   return (
     <div className="space-y-8">

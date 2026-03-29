@@ -1,6 +1,6 @@
 # API package
 from fastapi import APIRouter
-from app.api import stocks, financials, shareholders, news, knowledge_graph
+from app.api import stocks, financials, shareholders, news, knowledge_graph, qa
 
 api_router = APIRouter()
 
@@ -10,3 +10,4 @@ api_router.include_router(financials.router, prefix="/financials", tags=["财报
 api_router.include_router(shareholders.router, prefix="/shareholders", tags=["持股查询"])
 api_router.include_router(news.router, prefix="/news", tags=["新闻资讯"])
 api_router.include_router(knowledge_graph.router, prefix="/kg", tags=["知识图谱"])
+api_router.include_router(qa.router, prefix="/qa", tags=["智能问答"])

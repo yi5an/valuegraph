@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, X, Network } from "lucide-react";
-import { KGNode, KGEdge, KGResponse } from "@/lib/types";
-import { getGraphData, getSupplyChain, getRiskPropagation } from "@/lib/api";
+import { Search, ArrowUpCircle, ArrowDownCircle, AlertTriangle, X, Network, Trophy, TrendingUp } from "lucide-react";
+import { KGNode, KGEdge, KGResponse, InfluenceItem } from "@/lib/types";
+import { getGraphData, getSupplyChain, getRiskPropagation, getInfluence } from "@/lib/api";
 
 interface NodePosition {
   x: number;
@@ -148,6 +148,8 @@ export default function GraphPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
+  const [influenceData, setInfluenceData] = useState<InfluenceItem[]>([]);
+  const [loadingInfluence, setLoadingInfluence] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
   
   const width = 800;
@@ -162,6 +164,24 @@ export default function GraphPage() {
   useEffect(() => {
     updateLayout();
   }, [nodes, edges, updateLayout]);
+  
+  // Load influence data on mount
+  useEffect(() => {
+    const fetchInfluence = async () => {
+      setLoadingInfluence(true);
+      try {
+        const response = await getInfluence(20);
+        if (response.success && response.data) {
+          setInfluenceData(response.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch influence data:", err);
+      } finally {
+        setLoadingInfluence(false);
+      }
+    };
+    fetchInfluence();
+  }, []);
   
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -490,6 +510,42 @@ export default function GraphPage() {
               </div>
             ))}
           </div>
+        </div>
+        
+        {/* Influence Ranking Panel */}
+        <div className="rounded-2xl border border-white/10 bg-card/80 p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <Trophy className="h-4 w-4 text-yellow-400" />
+            <h3 className="text-sm font-medium text-white">影响力排名 Top 20</h3>
+          </div>
+          
+          {loadingInfluence ? (
+            <div className="text-xs text-slate-400">加载中...</div>
+          ) : influenceData.length > 0 ? (
+            <div className="space-y-2 max-h-64 overflow-y-auto">
+              {influenceData.map((item, index) => (
+                <div
+                  key={`${item.name}-${index}`}
+                  className="flex items-center justify-between py-1.5 border-b border-white/5 last:border-0"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`text-xs font-medium w-5 ${
+                      index < 3 ? "text-yellow-400" : "text-slate-500"
+                    }`}>
+                      {index + 1}
+                    </span>
+                    <span className="text-xs text-white truncate max-w-[120px]">{item.name}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">{item.type}</span>
+                    <span className="text-xs font-medium text-indigo-400">{item.score.toFixed(2)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-xs text-slate-400">暂无数据</div>
+          )}
         </div>
       </div>
     </div>

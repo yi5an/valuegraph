@@ -5,7 +5,11 @@ import {
   Stock,
   StockFilters,
   NewsItem,
-  KGResponse
+  KGResponse,
+  CompareResponse,
+  AnomalyResponse,
+  InfluenceResponse,
+  ShareholderChangeResponse
 } from "@/lib/types";
 
 /**
@@ -419,5 +423,91 @@ export async function getRiskPropagation(name: string, depth = 3): Promise<KGRes
   } catch (error) {
     console.error("getRiskPropagation error:", error);
     return { success: false, data: null };
+  }
+}
+
+// ==================== Wave 2 新增 API ====================
+
+/**
+ * 股票对比分析
+ * GET /api/stocks/compare?codes=600519,000858
+ */
+export async function compareStocks(codes: string): Promise<CompareResponse> {
+  try {
+    const res = await fetch(`/api/stocks/compare?codes=${encodeURIComponent(codes)}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to compare stocks");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("compareStocks error:", error);
+    return { success: false, stocks: [], total: 0, metrics: [] };
+  }
+}
+
+/**
+ * 财报异常检测
+ * GET /api/financials/{code}/anomalies
+ */
+export async function getAnomalies(code: string): Promise<AnomalyResponse> {
+  try {
+    const res = await fetch(`/api/financials/${code}/anomalies`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch anomalies");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getAnomalies error:", error);
+    return { success: false, data: { has_anomaly: false, anomalies: [] } };
+  }
+}
+
+/**
+ * PageRank 影响力排名
+ * GET /api/kg/influence?top=20
+ */
+export async function getInfluence(top = 20): Promise<InfluenceResponse> {
+  try {
+    const res = await fetch(`/api/kg/influence?top=${top}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch influence data");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getInfluence error:", error);
+    return { success: false, data: [], total: 0 };
+  }
+}
+
+/**
+ * 持股变化监控
+ * GET /api/shareholders/changes/{stock_code}
+ */
+export async function getShareholderChanges(code: string): Promise<ShareholderChangeResponse> {
+  try {
+    const res = await fetch(`/api/shareholders/changes/${code}`, {
+      cache: "no-store"
+    });
+    
+    if (!res.ok) {
+      throw new Error("Failed to fetch shareholder changes");
+    }
+    
+    return await res.json();
+  } catch (error) {
+    console.error("getShareholderChanges error:", error);
+    return { success: false, data: { stock_code: code, changes: [] } };
   }
 }
