@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { BarChart3, PieChart, Star } from "lucide-react";
+import { BarChart3, PieChart, Star, GitCompare, Network, Newspaper } from "lucide-react";
 
 const items = [
   { href: "/", label: "推荐", icon: Star },
+  { href: "/compare", label: "对比", icon: GitCompare },
   { href: "/financial", label: "财报", icon: BarChart3 },
   { href: "/shareholders", label: "持股", icon: PieChart }
 ];
@@ -13,7 +14,7 @@ const items = [
 export function MobileNav(): JSX.Element {
   return (
     <nav className="fixed inset-x-4 bottom-4 z-50 rounded-3xl border border-white/10 bg-slate-900/90 p-2 shadow-panel backdrop-blur desktop:hidden">
-      <ul className="grid grid-cols-3 gap-2">
+      <ul className="grid grid-cols-4 gap-2">
         {items.map(({ href, label, icon: Icon }) => (
           <li key={href}>
             <Link

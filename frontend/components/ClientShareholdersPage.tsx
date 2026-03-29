@@ -177,6 +177,66 @@ export function ClientShareholdersPage({
             <p className="mb-4 text-lg font-semibold text-white">十大股东</p>
             <ShareholderTable rows={current.topHolders} />
           </section>
+          
+          {/* 持股变化监控区域 */}
+          <section className="rounded-3xl border border-white/10 bg-card/80 p-5 shadow-panel">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-lg font-semibold text-white flex items-center gap-2">
+                <RefreshCw className="h-5 w-5 text-indigo-400" />
+                持股变化监控
+              </p>
+            </div>
+            
+            {loadingChanges ? (
+              <div className="text-sm text-slate-400">加载中...</div>
+            ) : changes.length > 0 ? (
+              <div className="space-y-3">
+                {changes.map((change, index) => (
+                  <div
+                    key={`${change.holder_name}-${index}`}
+                    className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 p-4"
+                  >
+                    <div className="flex items-center gap-3">
+                      {change.change_type === "增持" ? (
+                        <ArrowUpRight className="h-4 w-4 text-green-400" />
+                      ) : change.change_type === "减持" ? (
+                        <ArrowDownRight className="h-4 w-4 text-red-400" />
+                      ) : (
+                        <Minus className="h-4 w-4 text-slate-400" />
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-white">{change.holder_name}</p>
+                        {change.report_date && (
+                          <p className="text-xs text-slate-500">{change.report_date}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`text-sm font-medium ${
+                        change.change_type === "增持" ? "text-green-400" : 
+                        change.change_type === "减持" ? "text-red-400" : "text-slate-400"
+                      }`}>
+                        {change.change_type}
+                      </p>
+                      {change.change_ratio !== undefined && (
+                        <p className={`text-xs ${
+                          change.change_ratio > 0 ? "text-green-400" : 
+                          change.change_ratio < 0 ? "text-red-400" : "text-slate-400"
+                        }`}>
+                          {change.change_ratio > 0 ? "+" : ""}{change.change_ratio.toFixed(2)}%
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-400 flex items-center gap-2">
+                <Minus className="h-4 w-4" />
+                暂无持股变化记录
+              </div>
+            )}
+          </section>
         </>
       )}
     </div>

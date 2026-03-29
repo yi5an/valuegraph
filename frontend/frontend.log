@@ -123,3 +123,17 @@ getFinancials error, falling back to mock data: TypeError: Failed to parse URL f
  ✓ Compiled in 406ms (831 modules)
  ✓ Compiled in 186ms (831 modules)
  ✓ Compiled in 176ms (831 modules)
+ ✓ Compiled in 264ms (836 modules)
+ ✓ Compiled in 249ms (838 modules)
+ ✓ Compiled in 190ms (838 modules)
+ ✓ Compiled in 195ms (838 modules)
+ ✓ Compiled in 223ms (838 modules)
+ ✓ Compiled in 182ms (838 modules)
+ ✓ Compiled in 282ms (838 modules)
+ ○ Compiling /compare ...
+ ✓ Compiled /compare in 813ms (1111 modules)
+ GET /compare 200 in 957ms
+ ✓ Compiled /graph in 171ms (295 modules)
+ GET /graph 200 in 368ms
+ ✓ Compiled /news in 197ms (300 modules)
+ GET /news 200 in 279ms

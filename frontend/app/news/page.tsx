@@ -1,8 +1,29 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { getHotNews, getStockNews } from "@/lib/api";
 import { NewsItem } from "@/lib/types";
+
+// 情感标签组件
+function SentimentTag({ sentiment }: { sentiment?: "positive" | "negative" | "neutral" }) {
+  if (!sentiment) return null;
+  
+  const config = {
+    positive: { icon: TrendingUp, label: "正面", className: "bg-green-500/20 text-green-400" },
+    negative: { icon: TrendingDown, label: "负面", className: "bg-red-500/20 text-red-400" },
+    neutral: { icon: Minus, label: "中性", className: "bg-slate-500/20 text-slate-400" }
+  };
+  
+  const { icon: Icon, label, className } = config[sentiment];
+  
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${className}`}>
+      <Icon className="h-3 w-3" />
+      {label}
+    </span>
+  );
+}
 
 /**
  * News page showing hot news and stock-related news.
@@ -155,7 +176,12 @@ export default function NewsPage(): JSX.Element {
                 rel="noopener noreferrer"
                 className="block rounded-xl border border-white/10 bg-slate-900/50 p-4 transition hover:border-primary/50 hover:bg-slate-900"
               >
-                <h3 className="text-sm font-medium text-white">{item.title}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-medium text-white flex-1">{item.title}</h3>
+                  {"sentiment" in item && (item as any).sentiment && (
+                    <SentimentTag sentiment={(item as any).sentiment} />
+                  )}
+                </div>
                 <div className="mt-2 flex items-center gap-3 text-xs text-slate-400">
                   <span>{item.source}</span>
                   <span>•</span>
@@ -195,7 +221,12 @@ export default function NewsPage(): JSX.Element {
                 rel="noopener noreferrer"
                 className="block rounded-xl border border-white/10 bg-slate-900/50 p-4 transition hover:border-primary/50 hover:bg-slate-900"
               >
-                <h3 className="text-sm font-medium text-white">{item.title}</h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-sm font-medium text-white flex-1">{item.title}</h3>
+                  {"sentiment" in item && (item as any).sentiment && (
+                    <SentimentTag sentiment={(item as any).sentiment} />
+                  )}
+                </div>
                 <p className="mt-2 text-xs text-slate-400 line-clamp-2">
                   {item.content}
                 </p>
