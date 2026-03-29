@@ -41,33 +41,45 @@ async def recommend_stocks(
     min_roe: float = Query(default=15.0, ge=0, le=100, description="最低ROE（%）"),
     max_debt_ratio: float = Query(default=50.0, ge=0, le=100, description="最高负债率（%）"),
     industry: Optional[str] = Query(default=None, description="行业筛选"),
+    min_gross_margin: Optional[float] = Query(default=None, ge=0, le=100, description="最低毛利率（%）"),
+    min_net_profit_growth: Optional[float] = Query(default=None, ge=-100, le=500, description="最低净利润增长率（%）"),
+    sort_by: str = Query(default="score", description="排序字段：score, roe, pe, market_cap"),
+    sector: Optional[str] = Query(default=None, description="板块筛选（用于美股：科技类/金融类/医药类/消费类）"),
     db: Session = Depends(get_db)
 ):
     """
     价值投资推荐
-    
+
     - **market**: 市场类型（A=A股，US=美股，HK=港股）
     - **limit**: 返回数量（1-100）
     - **min_roe**: 最低净资产收益率（%）
     - **max_debt_ratio**: 最高资产负债率（%）
     - **industry**: 行业筛选（可选）
+    - **min_gross_margin**: 最低毛利率（%）
+    - **min_net_profit_growth**: 最低净利润增长率（%）
+    - **sort_by**: 排序字段（score/roe/pe/market_cap）
+    - **sector**: 板块筛选（美股）
     """
     try:
         # 创建推荐服务
         service = RecommendationService(db)
-        
+
         # 获取推荐
         recommendations = service.recommend_stocks(
             market=market,
             limit=limit,
             min_roe=min_roe,
             max_debt_ratio=max_debt_ratio,
-            industry=industry
+            industry=industry,
+            min_gross_margin=min_gross_margin,
+            min_net_profit_growth=min_net_profit_growth,
+            sort_by=sort_by,
+            sector=sector
         )
-        
+
         # 构建响应
         data = [StockRecommend(**rec) for rec in recommendations]
-        
+
         return RecommendResponse(
             success=True,
             data=data,
@@ -80,10 +92,14 @@ async def recommend_stocks(
                     'min_roe': min_roe,
                     'max_debt_ratio': max_debt_ratio,
                     'industry': industry,
+                    'min_gross_margin': min_gross_margin,
+                    'min_net_profit_growth': min_net_profit_growth,
+                    'sort_by': sort_by,
+                    'sector': sector,
                 }
             }
         )
-    
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"推荐失败: {str(e)}")
 
@@ -141,8 +157,11 @@ async def compare_stocks(
             if not stock:
                 continue
             
-            # 获取最新财务数据
-            financial_data = AkShareCollector.get_financial_indicator(stock_code)
+            # 从数据库获取最新财务数据（不实时调 AkShare）
+            from app.models.financial import Financial
+            latest_financial = db.query(Financial).filter(
+                Financial.stock_code == stock_code
+            ).order_by(Financial.id.desc()).first()
             
             stock_info = {
                 'code': stock_code,
@@ -151,19 +170,19 @@ async def compare_stocks(
             }
             
             # 添加财务指标
-            if financial_data:
+            if latest_financial:
                 stock_info.update({
-                    'roe': financial_data.get('roe'),
-                    'debt_ratio': financial_data.get('debt_ratio'),
-                    'gross_margin': financial_data.get('gross_margin'),
-                    'revenue': financial_data.get('revenue'),
-                    'net_profit': financial_data.get('net_profit'),
-                    'revenue_yoy': financial_data.get('revenue_yoy'),
-                    'net_profit_yoy': financial_data.get('net_profit_yoy'),
-                    'eps': financial_data.get('eps'),
-                    'bvps': financial_data.get('bvps'),
-                    'operating_cash_flow': financial_data.get('operating_cash_flow'),
-                    'report_date': str(financial_data.get('report_date', ''))
+                    'roe': getattr(latest_financial, 'roe', None),
+                    'debt_ratio': getattr(latest_financial, 'debt_ratio', None),
+                    'gross_margin': getattr(latest_financial, 'gross_margin', None),
+                    'revenue': getattr(latest_financial, 'revenue', None),
+                    'net_profit': getattr(latest_financial, 'net_profit', None),
+                    'revenue_yoy': getattr(latest_financial, 'revenue_yoy', None),
+                    'net_profit_yoy': getattr(latest_financial, 'net_profit_yoy', None),
+                    'eps': getattr(latest_financial, 'eps', None),
+                    'bvps': getattr(latest_financial, 'bvps', None),
+                    'operating_cash_flow': getattr(latest_financial, 'operating_cash_flow', None),
+                    'report_date': str(getattr(latest_financial, 'report_date', ''))
                 })
             
             stocks_data.append(stock_info)

@@ -136,8 +136,18 @@ class AkShareCollector:
         sf = AkShareCollector._safe_float
         top_holders = []
         report_date = datetime.now().strftime('%Y-%m-%d')
+        stock_name = ""
 
         try:
+            # 先获取股票名称
+            try:
+                df_name = ak.stock_zh_a_spot_em()
+                stock_info = df_name[df_name['代码'] == stock_code]
+                if not stock_info.empty:
+                    stock_name = str(stock_info.iloc[0]['名称'])
+            except:
+                pass
+
             # 方案1: 使用 stock_main_stock_holder
             try:
                 df = ak.stock_main_stock_holder(stock=stock_code)
@@ -189,6 +199,7 @@ class AkShareCollector:
 
             return {
                 'stock_code': stock_code,
+                'name': stock_name,
                 'report_date': report_date,
                 'top_10_shareholders': top_holders,
                 'institutional_holders': [],
@@ -199,6 +210,7 @@ class AkShareCollector:
             logger.error(f"❌ 获取 {stock_code} 股东信息失败: {e}")
             return {
                 'stock_code': stock_code,
+                'name': stock_name,
                 'report_date': report_date,
                 'top_10_shareholders': [],
                 'institutional_holders': [],

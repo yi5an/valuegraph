@@ -8,8 +8,29 @@ from app.schemas.shareholder import ShareholderResponse, ShareholderDetail
 from app.services.data_collector import AkShareCollector
 from app.utils.cache import cache
 from app.utils.rate_limiter import limiter
+from typing import List
+from pydantic import BaseModel
 
 router = APIRouter()
+
+
+class InstitutionalHolder(BaseModel):
+    """机构持仓"""
+    fund_name: str
+    fund_code: str
+    hold_amount: float = None
+    hold_ratio: float = None
+    hold_value: float = None
+    net_value_ratio: float = None
+    report_date: str = None
+
+
+class InstitutionalHolderResponse(BaseModel):
+    """机构持仓响应"""
+    success: bool
+    stock_code: str
+    data: List[InstitutionalHolder] = []
+    total: int = 0
 
 
 @router.get("/{stock_code}", response_model=ShareholderResponse)
@@ -31,8 +52,18 @@ async def get_shareholders(
         return ShareholderResponse(success=True, data=ShareholderDetail(**cached))
     
     try:
-        # 从 AkShare 获取股东信息
-        data = AkShareCollector.get_shareholders(stock_code)
+        # 从 AkShare 获取股东信息（加超时保护）
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            future = executor.submit(AkShareCollector.get_shareholders, stock_code)
+            try:
+                data = future.result(timeout=8)
+            except concurrent.futures.TimeoutError:
+                return ShareholderResponse(
+                    success=False,
+                    data=None,
+                    message="数据获取超时，请稍后重试"
+                )
         
         if not data['top_10_shareholders']:
             return ShareholderResponse(
@@ -127,14 +158,64 @@ async def get_shareholder_changes(
             'data_available': data_available,
             'message': '暂无数据' if not data_available else None
         }
-        
+
         # 写入缓存
         cache.set(cache_key, result)
-        
+
         return {
             'success': True,
             'data': result
         }
-    
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+
+@router.get("/institutional/{stock_code}", response_model=InstitutionalHolderResponse)
+async def get_institutional_holders(
+    request: Request,
+    stock_code: str
+):
+    """
+    获取机构持仓数据
+
+    - **stock_code**: 股票代码（如 600519）
+
+    返回基金持仓数据（作为机构持仓的代表）
+    """
+    cache_key = f"institutional_holders:{stock_code}"
+
+    # 尝试从缓存获取
+    cached = cache.get(cache_key)
+    if cached:
+        return InstitutionalHolderResponse(
+            success=True,
+            stock_code=stock_code,
+            data=[InstitutionalHolder(**h) for h in cached],
+            total=len(cached)
+        )
+
+    try:
+        # 获取机构持仓数据
+        holders = AkShareCollector.get_institutional_holders(stock_code)
+
+        if not holders:
+            return InstitutionalHolderResponse(
+                success=False,
+                stock_code=stock_code,
+                data=[],
+                total=0
+            )
+
+        # 写入缓存
+        cache.set(cache_key, holders)
+
+        return InstitutionalHolderResponse(
+            success=True,
+            stock_code=stock_code,
+            data=[InstitutionalHolder(**h) for h in holders],
+            total=len(holders)
+        )
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")

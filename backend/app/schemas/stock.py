@@ -21,9 +21,11 @@ class StockRecommend(StockBase):
     latest_roe: Optional[float] = Field(None, description="最新ROE")
     latest_pe: Optional[float] = Field(None, description="最新市盈率")
     debt_ratio: Optional[float] = Field(None, description="负债率")
+    gross_margin: Optional[float] = Field(None, description="毛利率")
+    net_profit_growth: Optional[float] = Field(None, description="净利润增长率")
     recommendation_score: Optional[float] = Field(None, description="推荐得分")
     recommendation_reason: Optional[str] = Field(None, description="推荐理由")
-    
+
     class Config:
         from_attributes = True
 

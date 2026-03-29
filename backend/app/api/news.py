@@ -90,8 +90,8 @@ async def add_sentiment_to_news(news_items: list) -> list:
     analyzer = SentimentAnalyzer()
     
     try:
-        # 批量分析情感
-        for item in news_items:
+        # 只对前3条做情感分析，避免全量阻塞
+        for item in news_items[:3]:
             try:
                 # 合并标题和内容进行分析
                 text = f"{item.title} {item.content or ''}"
