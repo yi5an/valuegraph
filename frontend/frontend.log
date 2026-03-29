@@ -92,3 +92,10 @@ getFinancials error, falling back to mock data: TypeError: Failed to parse URL f
  ○ Compiling /news ...
  ✓ Compiled /news in 838ms (1082 modules)
  GET /news 200 in 1063ms
+ ✓ Compiled in 313ms (820 modules)
+ ✓ Compiled in 277ms (820 modules)
+ ✓ Compiled in 201ms (820 modules)
+ ✓ Compiled in 202ms (820 modules)
+ ✓ Compiled in 172ms (820 modules)
+ ✓ Compiled in 423ms (806 modules)
+ ✓ Compiled in 169ms (820 modules)
