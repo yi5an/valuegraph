@@ -223,3 +223,12 @@ TypeError: __webpack_modules__[moduleId] is not a function
  GET /_next/static/chunks/app-pages-internals.js 404 in 648ms
  GET /_next/static/chunks/app/page.js 404 in 641ms
  GET /_next/static/chunks/app/error.js 404 in 638ms
+ GET / 200 in 56ms
+ GET / 200 in 38ms
+ GET / 200 in 36ms
+ GET / 200 in 35ms
+ GET / 200 in 34ms
+ GET / 200 in 35ms
+ GET / 200 in 40ms
+ GET / 200 in 35ms
+[?25h

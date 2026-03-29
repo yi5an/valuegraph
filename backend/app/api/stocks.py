@@ -1,5 +1,10 @@
 """
 股票推荐 API
+
+支持多种投资策略：
+- value: 价值投资策略（默认）
+- growth: 成长投资策略（预留）
+- trend: 趋势投资策略（预留）
 """
 from fastapi import APIRouter, Depends, Query, HTTPException, Request, BackgroundTasks
 from sqlalchemy.orm import Session
@@ -45,11 +50,21 @@ async def recommend_stocks(
     min_net_profit_growth: Optional[float] = Query(default=None, ge=-100, le=500, description="最低净利润增长率（%）"),
     sort_by: str = Query(default="score", description="排序字段：score, roe, pe, market_cap"),
     sector: Optional[str] = Query(default=None, description="板块筛选（用于美股：科技类/金融类/医药类/消费类）"),
+    # 新增参数
+    strategy: str = Query(default="value", description="投资策略：value（价值投资）, growth（成长投资-预留）, trend（趋势投资-预留）"),
+    min_safety_margin: float = Query(default=0, ge=-100, le=100, description="最低安全边际（%）"),
+    min_grade: str = Query(default="C", description="最低评级：A+, A, B, C, D"),
     db: Session = Depends(get_db)
 ):
     """
-    价值投资推荐
+    价值投资推荐（支持多种策略）
 
+    ## 策略说明
+    - **value**: 价值投资策略（默认）- 基于 Graham 和巴菲特理念
+    - **growth**: 成长投资策略（预留）
+    - **trend**: 趋势投资策略（预留）
+
+    ## 基础参数
     - **market**: 市场类型（A=A股，US=美股，HK=港股）
     - **limit**: 返回数量（1-100）
     - **min_roe**: 最低净资产收益率（%）
@@ -59,8 +74,25 @@ async def recommend_stocks(
     - **min_net_profit_growth**: 最低净利润增长率（%）
     - **sort_by**: 排序字段（score/roe/pe/market_cap）
     - **sector**: 板块筛选（美股）
+
+    ## 策略参数（value 策略）
+    - **strategy**: 策略类型（value/growth/trend，默认value）
+    - **min_safety_margin**: 最低安全边际（%，默认0）
+    - **min_grade**: 最低评级（A+/A/B/C/D，默认C）
+
+    ## 返回字段说明
+    - **composite_score**: 综合得分（0-100分）
+    - **grade**: 推荐等级（A+/A/B/C/D）
+    - **safety_margin**: 安全边际（%，仅 value 策略）
+    - **score_breakdown**: 得分明细（按维度）
+    - **recommendation_reason**: 推荐理由
     """
     try:
+        # 验证评级参数
+        valid_grades = ["A+", "A", "B", "C", "D"]
+        if min_grade not in valid_grades:
+            raise HTTPException(status_code=400, detail=f"无效的评级参数，可选值: {valid_grades}")
+
         # 创建推荐服务
         service = RecommendationService(db)
 
@@ -74,7 +106,10 @@ async def recommend_stocks(
             min_gross_margin=min_gross_margin,
             min_net_profit_growth=min_net_profit_growth,
             sort_by=sort_by,
-            sector=sector
+            sector=sector,
+            strategy=strategy,
+            min_safety_margin=min_safety_margin,
+            min_grade=min_grade,
         )
 
         # 构建响应 - 统一格式为 {"success": true, "data": {"recommendations": [...], "total": N}}
@@ -82,12 +117,53 @@ async def recommend_stocks(
             "success": True,
             "data": {
                 "recommendations": recommendations,
-                "total": len(recommendations)
+                "total": len(recommendations),
+                "strategy": strategy,
+                "params": {
+                    "min_roe": min_roe,
+                    "max_debt_ratio": max_debt_ratio,
+                    "min_safety_margin": min_safety_margin,
+                    "min_grade": min_grade,
+                }
             }
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"推荐失败: {str(e)}")
+
+
+@router.get("/strategies")
+async def list_strategies(request: Request):
+    """
+    获取可用投资策略列表
+
+    返回所有可用的投资策略及其参数说明。
+
+    ## 返回字段
+    - **strategies**: 策略列表
+      - **name**: 策略名称
+      - **description**: 策略描述
+      - **params**: 策略参数说明
+    """
+    try:
+        from app.database import SessionLocal
+        tmp_db = SessionLocal()
+        try:
+            service = RecommendationService(tmp_db)
+            strategies = service.get_available_strategies()
+        finally:
+            tmp_db.close()
+        return {
+            "success": True,
+            "data": {
+                "strategies": strategies,
+                "total": len(strategies)
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"获取策略列表失败: {str(e)}")
 
 
 @router.post("/sync")
