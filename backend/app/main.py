@@ -8,6 +8,7 @@ from app.config import settings
 from app.database import init_db
 from app.api import api_router
 from app.utils.rate_limiter import limiter
+from app.services.news_scheduler import NewsScheduler
 import logging
 
 # 配置日志
@@ -17,6 +18,9 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# 创建新闻调度器实例
+news_scheduler = NewsScheduler()
 
 # 创建 FastAPI 应用
 app = FastAPI(
@@ -60,13 +64,21 @@ async def startup_event():
     init_db()
     logger.info("✅ 数据库初始化完成")
     
+    # 启动新闻采集调度器
+    news_scheduler.start()
+    
     logger.info(f"✅ 应用启动成功 - {settings.app_name} v{settings.app_version}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """应用关闭时执行"""
-    logger.info("👋 ValueGraph 后端关闭")
+    logger.info("👋 ValueGraph 后端关闭中...")
+    
+    # 关闭新闻采集调度器
+    news_scheduler.shutdown()
+    
+    logger.info("✅ 应用已完全关闭")
 
 
 @app.get("/")

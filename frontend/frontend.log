@@ -210,3 +210,16 @@ TypeError: __webpack_modules__[moduleId] is not a function
  GET /graph 200 in 42ms
  GET /news 200 in 34ms
  GET /qa 200 in 30ms
+ GET / 200 in 44ms
+ GET / 200 in 37ms
+ GET / 200 in 38ms
+ GET / 200 in 35ms
+ GET / 200 in 37ms
+ ○ Compiling /_not-found ...
+ ✓ Compiled /_not-found in 599ms (1354 modules)
+ GET /_next/static/css/app/layout.css?v=1774769009149 404 in 773ms
+ GET /_next/static/chunks/main-app.js?v=1774769009149 404 in 658ms
+ GET /_next/static/chunks/app/layout.js 404 in 643ms
+ GET /_next/static/chunks/app-pages-internals.js 404 in 648ms
+ GET /_next/static/chunks/app/page.js 404 in 641ms
+ GET /_next/static/chunks/app/error.js 404 in 638ms

@@ -391,3 +391,51 @@ async def get_related_news(
     except Exception as e:
         logger.error(f"获取关联新闻失败: {str(e)}")
         raise HTTPException(status_code=500, detail=f"获取关联新闻失败: {str(e)}")
+
+
+@router.post("/collect")
+async def trigger_collection(background_tasks: BackgroundTasks):
+    """手动触发一次完整采集流水线"""
+    from app.services.news_scheduler import NewsScheduler
+    
+    async def run_collection():
+        scheduler = NewsScheduler()
+        await scheduler._sync_hot_news()
+        await scheduler._sync_stock_news()
+        await scheduler._process_new_entities()
+    
+    background_tasks.add_task(run_collection)
+    return {"success": True, "message": "采集任务已启动"}
+
+
+@router.get("/collect/status")
+async def get_collect_status():
+    """获取采集调度器状态"""
+    from app.services.news_scheduler import NewsScheduler
+    from app.main import news_scheduler
+    
+    try:
+        # 获取调度器状态
+        jobs = news_scheduler.scheduler.get_jobs()
+        
+        job_info = []
+        for job in jobs:
+            next_run = job.next_run_time
+            job_info.append({
+                'id': job.id,
+                'name': job.name,
+                'next_run': next_run.isoformat() if next_run else None,
+                'trigger': str(job.trigger)
+            })
+        
+        return {
+            "success": True,
+            "running": news_scheduler.scheduler.running,
+            "jobs": job_info
+        }
+    except Exception as e:
+        logger.error(f"获取调度器状态失败: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
