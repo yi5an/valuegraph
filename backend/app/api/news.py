@@ -82,56 +82,33 @@ def save_news_to_db(db: Session, news_list: list):
 
 async def add_sentiment_to_news(news_items: list) -> list:
     """
-    为新闻列表添加情感分析和事件类型
-    
-    Args:
-        news_items: 新闻项列表
-        
-    Returns:
-        添加了 sentiment 和 event_type 字段的新闻列表
+    为新闻列表添加情感分析和事件类型（不阻塞事件循环）
+    情感分析在后台线程执行，先返回数据，sentiment 为 None
     """
-    analyzer = SentimentAnalyzer()
-    extractor = EntityExtractor(db=None)  # 仅用于事件分类，不需要 db
+    import asyncio
     
-    try:
-        # 只对前3条做情感分析，避免全量阻塞
-        for item in news_items[:3]:
-            try:
-                # 合并标题和内容进行分析
-                text = f"{item.title} {item.content or ''}"
-                
-                # 情感分析
-                sentiment = await analyzer.analyze(text)
-                
-                # 将 sentiment 添加到 NewsItem
-                # 由于 NewsItem 是 Pydantic 模型，需要转换为字典再添加
-                if hasattr(item, '__dict__'):
-                    item.__dict__['sentiment'] = sentiment
-                else:
-                    # 直接设置属性（Pydantic 模型）
+    analyzer = SentimentAnalyzer()
+    
+    # 先设置默认值，立即返回
+    for item in news_items:
+        item.sentiment = {'sentiment': 'neutral', 'score': 0.5, 'keywords': []}
+        item.event_type = 'general'
+    
+    # 后台异步执行情感分析（不阻塞响应）
+    async def _bg_analyze():
+        try:
+            for item in news_items[:3]:
+                try:
+                    text = f"{item.title} {item.content or ''}"
+                    sentiment = await analyzer.analyze(text)
                     item.sentiment = sentiment
-                    
-            except Exception as e:
-                logger.warning(f"情感分析失败: {e}")
-                # 设置默认值
-                item.sentiment = {
-                    'sentiment': 'neutral',
-                    'score': 0.5,
-                    'keywords': []
-                }
-        
-        # 为所有新闻添加事件类型（快速规则匹配）
-        for item in news_items:
-            try:
-                text = f"{item.title} {item.content or ''}"
-                event_type = extractor.classify_event_type(text)
-                item.event_type = event_type
-            except Exception as e:
-                logger.warning(f"事件分类失败: {e}")
-                item.event_type = 'general'
-                
-    finally:
-        await analyzer.close()
+                except Exception as e:
+                    logger.warning(f"情感分析失败: {e}")
+        finally:
+            await analyzer.close()
+    
+    asyncio.create_task(_bg_analyze())
+    return news_items
     
     return news_items
 

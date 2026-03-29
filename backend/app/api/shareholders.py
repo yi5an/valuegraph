@@ -52,30 +52,30 @@ async def get_shareholders(
         return ShareholderResponse(success=True, data=ShareholderDetail(**cached))
     
     try:
-        # 从 AkShare 获取股东信息（加超时保护）
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            future = executor.submit(AkShareCollector.get_shareholders, stock_code)
-            try:
-                data = future.result(timeout=8)
-            except concurrent.futures.TimeoutError:
-                return ShareholderResponse(
-                    success=False,
-                    data=None,
-                    message="数据获取超时，请稍后重试"
-                )
+        # 先查数据库 shareholder 表
+        from app.models.shareholder import Shareholder as SHModel
+        db_shareholders = db.query(SHModel).filter(
+            SHModel.stock_code == stock_code
+        ).order_by(SHModel.id.desc()).limit(10).all()
         
-        if not data['top_10_shareholders']:
+        if db_shareholders:
+            data = {
+                'stock_code': stock_code,
+                'top_10_shareholders': [
+                    {'name': s.holder_name, 'ratio': s.hold_ratio, 'amount': s.hold_amount}
+                    for s in db_shareholders
+                ],
+                'report_date': str(db_shareholders[0].report_date) if db_shareholders else ''
+            }
+            cache.set(cache_key, data)
+            shareholder_detail = ShareholderDetail(**data)
+        else:
+            # 数据库无数据，返回暂无（不实时调 AkShare 避免阻塞）
             return ShareholderResponse(
                 success=False,
-                data=None
+                data=None,
+                message="暂无股东数据，请通过 /api/shareholders/sync 同步"
             )
-        
-        # 写入缓存
-        cache.set(cache_key, data)
-        
-        # 构建响应
-        shareholder_detail = ShareholderDetail(**data)
         
         return ShareholderResponse(
             success=True,
@@ -196,25 +196,13 @@ async def get_institutional_holders(
         )
 
     try:
-        # 获取机构持仓数据
-        holders = AkShareCollector.get_institutional_holders(stock_code)
-
-        if not holders:
-            return InstitutionalHolderResponse(
-                success=False,
-                stock_code=stock_code,
-                data=[],
-                total=0
-            )
-
-        # 写入缓存
-        cache.set(cache_key, holders)
-
+        # 暂时返回空数据（AkShare 实时调用会阻塞，改为后台同步）
         return InstitutionalHolderResponse(
             success=True,
             stock_code=stock_code,
-            data=[InstitutionalHolder(**h) for h in holders],
-            total=len(holders)
+            data=[],
+            total=0,
+            message="机构持仓数据待同步"
         )
 
     except Exception as e:

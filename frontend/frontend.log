@@ -154,3 +154,59 @@ getFinancials error, falling back to mock data: TypeError: Failed to parse URL f
  ✓ Compiled in 265ms (845 modules)
  ✓ Compiled in 191ms (845 modules)
  ✓ Compiled in 183ms (845 modules)
+ ✓ Compiled / in 352ms (287 modules)
+ ⨯ TypeError: __webpack_modules__[moduleId] is not a function
+    at Object.__webpack_require__ [as require] (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/.next/server/webpack-runtime.js:33:42)
+    at JSON.parse (<anonymous>)
+    at JSON.parse (<anonymous>)
+digest: "4265090610"
+TypeError: __webpack_modules__[moduleId] is not a function
+    at Object.__webpack_require__ [as require] (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/.next/server/webpack-runtime.js:33:42)
+    at require (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:39:20088)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108280
+    at eo (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108465)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:110694
+    at Object._fromJSON (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:111250)
+    at JSON.parse (<anonymous>)
+    at eu (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108959)
+    at en (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108027)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115169
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115186
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115219
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115236
+    at t (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115459)
+ ⨯ TypeError: __webpack_modules__[moduleId] is not a function
+    at Object.__webpack_require__ [as require] (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/.next/server/webpack-runtime.js:33:42)
+    at require (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:39:20088)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108280
+    at eo (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108465)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:110694
+    at Object._fromJSON (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:111250)
+    at JSON.parse (<anonymous>)
+    at eu (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108959)
+    at en (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:108027)
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115169
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115186
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115219
+    at /home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115236
+    at t (/home/yi5an/.openclaw/workspace/projects/valuegraph/frontend/node_modules/next/dist/compiled/next-server/app-page.runtime.dev.js:35:115459) {
+  page: '/'
+}
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1731ms (1345 modules)
+ GET / 500 in 2404ms
+ GET / 200 in 147ms
+ ✓ Compiled /compare in 329ms (336 modules)
+ GET /compare 200 in 465ms
+ ✓ Compiled /graph in 188ms (348 modules)
+ GET /graph 200 in 279ms
+ ✓ Compiled /news in 243ms (354 modules)
+ GET /news 200 in 323ms
+ ○ Compiling /qa ...
+ ✓ Compiled /qa in 587ms (1388 modules)
+ GET /qa 200 in 685ms
+ GET / 200 in 47ms
+ GET /compare 200 in 42ms
+ GET /graph 200 in 42ms
+ GET /news 200 in 34ms
+ GET /qa 200 in 30ms
