@@ -147,7 +147,10 @@ class EntityExtractor:
         
         # 获取两个公司之间的上下文
         start = min(idx1, idx2)
-        end = max(idx1, idx2) + len(text[max(idx1, idx2) == idx1 and company1 or company2])
+        # 修复：确定后面位置的公司名称并计算结束位置
+        later_idx = max(idx1, idx2)
+        later_company = company1 if later_idx == idx1 else company2
+        end = later_idx + len(later_company)
         context = text[start:end]
         
         # 匹配关系关键词
