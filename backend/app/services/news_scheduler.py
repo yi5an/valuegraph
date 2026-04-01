@@ -1,5 +1,6 @@
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from apscheduler.triggers.cron import CronTrigger
 import logging
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,24 @@ class NewsScheduler:
             trigger=IntervalTrigger(hours=1),
             id='sync_36kr',
             name='同步36氪新闻',
+            replace_existing=True
+        )
+        
+        # 每天 02:00 增量同步财务数据（500只/次）
+        self.scheduler.add_job(
+            self._sync_financials,
+            trigger=CronTrigger(hour=2, minute=0),
+            id='sync_financials',
+            name='增量同步财务数据',
+            replace_existing=True
+        )
+        
+        # 每周日 03:00 增量同步股东数据
+        self.scheduler.add_job(
+            self._sync_shareholders,
+            trigger=CronTrigger(day_of_week='sun', hour=3, minute=0),
+            id='sync_shareholders',
+            name='增量同步股东数据',
             replace_existing=True
         )
         
@@ -241,5 +260,27 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"36氪新闻采集失败: {e}")
     
+    async def _sync_financials(self):
+        """每天增量同步财务数据"""
+        logger.info("📊 开始增量同步财务数据...")
+        try:
+            from app.services.financial_crawler import FinancialCrawler
+            crawler = FinancialCrawler()
+            result = crawler.sync(limit=500, force=False, delay=0.2)
+            logger.info(f"📊 财务数据同步完成: {result.get('status')}, new={result.get('new_rows', 0)}")
+        except Exception as e:
+            logger.error(f"财务数据同步失败: {e}")
+
+    async def _sync_shareholders(self):
+        """每周增量同步股东数据"""
+        logger.info("👥 开始增量同步股东数据...")
+        try:
+            from app.services.shareholder_crawler import ShareholderCrawler
+            crawler = ShareholderCrawler()
+            result = crawler.sync(limit=200, force=False, delay=0.5)
+            logger.info(f"👥 股东数据同步完成: {result.get('status')}, new={result.get('new_rows', 0)}")
+        except Exception as e:
+            logger.error(f"股东数据同步失败: {e}")
+
     def shutdown(self):
         self.scheduler.shutdown()
