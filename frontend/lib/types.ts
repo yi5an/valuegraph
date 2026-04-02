@@ -14,6 +14,12 @@ export interface Stock {
   pe: number;
   reason: string;
   tags: string[];
+  reasonSections?: {
+    fundamentals?: string;
+    market_signals?: string;
+    related_news?: Array<{ title: string; sentiment: string; source: string; date: string }>;
+    investment_logic?: string;
+  };
 }
 
 export interface StockFilters {

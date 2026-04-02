@@ -36,6 +36,12 @@ interface BackendStockRecommend {
   debt_ratio?: number;
   recommendation_score?: number;
   recommendation_reason?: string;
+  reason_sections?: {
+    fundamentals?: string;
+    market_signals?: string;
+    related_news?: Array<{ title: string; sentiment: string; source: string; date: string }>;
+    investment_logic?: string;
+  };
 }
 
 /**
@@ -128,7 +134,8 @@ function mapStockFromBackend(backend: BackendStockRecommend): Stock {
     debtRatio: backend.debt_ratio || 0,
     pe: backend.latest_pe || 0,
     reason: backend.recommendation_reason || "",
-    tags: backend.industry ? [backend.industry] : []
+    tags: backend.industry ? [backend.industry] : [],
+    reasonSections: backend.reason_sections
   };
 }
 

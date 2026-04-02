@@ -9,11 +9,94 @@ interface StockCardProps {
   stock: Stock;
 }
 
+/** Extract the first line (grade + name) from the reason text */
+function getGradeLine(reason: string): string {
+  const firstNewline = reason.indexOf("\n");
+  return firstNewline > 0 ? reason.substring(0, firstNewline) : reason;
+}
+
+const sentimentColor: Record<string, string> = {
+  正面: "bg-positive",
+  负面: "bg-negative",
+  中性: "bg-slate-400",
+};
+
+function ReasonSections({ sections }: { sections: NonNullable<Stock["reasonSections"]> }) {
+  return (
+    <div className="mt-3 flex flex-col gap-2">
+      {/* 📊 基本面 */}
+      {sections.fundamentals && (
+        <div
+          className="rounded-xl bg-white/5 p-3"
+          style={{ borderLeft: "3px solid #10B981" }}
+        >
+          <p className="mb-1 text-xs font-medium text-slate-400">📊 基本面</p>
+          <p className="whitespace-pre-line text-sm leading-6 text-slate-200">
+            {sections.fundamentals}
+          </p>
+        </div>
+      )}
+
+      {/* 📈 动态信号 */}
+      {sections.market_signals && (
+        <div
+          className="rounded-xl bg-orange-500/5 p-3"
+          style={{ borderLeft: "3px solid #F97316" }}
+        >
+          <p className="mb-1 text-xs font-medium text-slate-400">📈 动态信号</p>
+          <p className="whitespace-pre-line text-sm leading-6 text-slate-200">
+            {sections.market_signals}
+          </p>
+        </div>
+      )}
+
+      {/* 📰 相关新闻 */}
+      {sections.related_news && sections.related_news.length > 0 && (
+        <div
+          className="rounded-xl bg-white/5 p-3"
+          style={{ borderLeft: "3px solid #2563EB" }}
+        >
+          <p className="mb-2 text-xs font-medium text-slate-400">📰 相关新闻</p>
+          <ul className="flex flex-col gap-1.5">
+            {sections.related_news.map((news, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm leading-6 text-slate-200">
+                <span
+                  className={cn(
+                    "mt-2 h-2 w-2 shrink-0 rounded-full",
+                    sentimentColor[news.sentiment] || "bg-slate-400"
+                  )}
+                />
+                <span className="whitespace-pre-line">{news.title}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* 💡 投资逻辑 */}
+      {sections.investment_logic && (
+        <div
+          className="rounded-xl bg-primary/5 p-3"
+          style={{ borderLeft: "3px solid #2563EB" }}
+        >
+          <p className="mb-1 text-xs font-medium text-slate-400">💡 投资逻辑</p>
+          <p className="whitespace-pre-line text-sm leading-6 text-slate-200">
+            {sections.investment_logic}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /**
  * Stock summary card with expandable reason section.
  */
 export function StockCard({ stock }: StockCardProps): JSX.Element {
   const [expanded, setExpanded] = useState(false);
+
+  const gradeLine = getGradeLine(stock.reason);
+  const hasSections = !!stock.reasonSections;
 
   return (
     <article className="card-hover rounded-3xl border border-white/10 bg-card/85 p-5 shadow-panel">
@@ -79,15 +162,18 @@ export function StockCard({ stock }: StockCardProps): JSX.Element {
         onClick={() => setExpanded((value) => !value)}
         type="button"
       >
-        <span>{stock.reason}</span>
+        <span className="line-clamp-1">{gradeLine}</span>
         {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
-      {expanded ? (
-        <p className="mt-3 text-sm leading-6 text-slate-300">
-          重点关注盈利质量、资产负债结构与估值区间，当前模型认为该标的具备较强价值属性。
-        </p>
-      ) : null}
+      {expanded &&
+        (hasSections ? (
+          <ReasonSections sections={stock.reasonSections!} />
+        ) : (
+          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-300">
+            {stock.reason}
+          </p>
+        ))}
     </article>
   );
 }
