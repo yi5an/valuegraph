@@ -85,16 +85,27 @@ class EventAnalyzer:
             report["entities"] = []
             report["relations"] = []
 
-        # Step 3: 情感分析
+        # Step 3: 情感分析（LLM + 规则兜底）
         try:
-            sentiment = await self._get_sentiment().analyze(news.title + (news.content or ""))
+            raw = await self._get_sentiment().analyze(news.title + (news.content or ""))
+            sentiment = {
+                "label": raw.get("sentiment", "neutral"),
+                "score": raw.get("score", 0.5),
+                "confidence": raw.get("score", 0.5),
+                "keywords": raw.get("keywords", []),
+            }
+            # 规则兜底：LLM 判断中性但标题有明确信号时覆盖
+            text = news.title + (news.content or "")
+            rule_label = self._rule_based_sentiment(text)
+            if rule_label and sentiment["label"] == "neutral":
+                sentiment["label"] = rule_label
+                sentiment["confidence"] = 0.8
             report["sentiment"] = sentiment
-            # 回写 DB
-            if sentiment:
-                news.sentiment = sentiment.get("label", "中性")
+            label_map = {"positive": "正面", "negative": "负面", "neutral": "中性"}
+            news.sentiment = label_map.get(sentiment["label"], sentiment["label"])
         except Exception as e:
             logger.warning(f"情感分析失败: {e}")
-            report["sentiment"] = {"label": "中性", "score": 0, "confidence": 0}
+            report["sentiment"] = {"label": "neutral", "score": 0.5, "confidence": 0, "keywords": []}
 
         # Step 4: 影响评估
         report["impact"] = self._assess_impact(report)
@@ -113,14 +124,43 @@ class EventAnalyzer:
 
         return report
 
+    @staticmethod
+    def _rule_based_sentiment(text: str) -> Optional[str]:
+        """基于关键词规则判断情感，仅用于 LLM 返回中性时的兜底"""
+        positive_kw = [
+            "涨价", "涨价至", "上调", "提高", "增长", "盈利", "盈利预告",
+            "超预期", "超预期", "突破", "新高", "历史新高", "翻倍",
+            "涨停", "大涨", "暴涨", "回购", "增持", "举牌",
+            "中标", "签约", "获批", "上市", "首发", "营收增长",
+            "利润增长", "分红", "派息", "降税", "减税", "补贴",
+            "产能扩张", "订单增长", "市场份额提升", "评级上调",
+        ]
+        negative_kw = [
+            "暴跌", "跌停", "大跌", "暴跌", "崩盘", "熔断",
+            "亏损", "亏损扩大", "业绩暴雷", "财务造假",
+            "减持", "清仓", "质押", "爆仓", "退市", "ST",
+            "处罚", "立案", "调查", "违规", "造假",
+            "降级", "下调评级", "召回", "停产", "裁员",
+            "债务违约", "资金链断裂", "商誉减值", "计提",
+            "监管", "约谈", "整改", "封杀", "制裁", "禁令",
+            "关税", "贸易战", "出口管制",
+        ]
+        for kw in positive_kw:
+            if kw in text:
+                return "positive"
+        for kw in negative_kw:
+            if kw in text:
+                return "negative"
+        return None
+
     def _assess_impact(self, report: Dict) -> Dict:
         """评估事件影响"""
         sentiment = report.get("sentiment", {})
         entities = report.get("entities", [])
         relations = report.get("relations", [])
 
-        sentiment_label = sentiment.get("label", "中性")
-        confidence = sentiment.get("confidence", 0)
+        sentiment_label = sentiment.get("label", "neutral")
+        confidence = sentiment.get("confidence", 0) or sentiment.get("score", 0)
 
         # 确定影响等级
         if sentiment_label in ("正面", "positive") and confidence >= 0.7:
@@ -198,7 +238,7 @@ class EventAnalyzer:
         affected = impact.get("affected_stocks", [])
 
         if not affected:
-            return {"summary": "该事件未涉及已知股票，暂无投资建议", "action": "watch"}
+            return {"summary": "该事件未涉及已知股票，暂无投资建议", "action": "watch", "details": []}
 
         # 基于影响等级和建议生成
         advices = []
@@ -311,8 +351,8 @@ class EventAnalyzer:
 
         # 情感
         sentiment = report.get("sentiment", {})
-        s_label = sentiment.get("label", "中性")
-        s_score = sentiment.get("score", 0)
+        s_label = sentiment.get("label", "neutral")
+        s_score = sentiment.get("confidence", 0) or sentiment.get("score", 0)
         emoji = {"正面": "🟢", "positive": "🟢", "负面": "🔴", "negative": "🔴"}.get(s_label, "⚪")
         lines.append(f"\n{emoji} <b>情感</b>：{s_label}（置信度 {s_score:.0%}）" if s_score else f"\n{emoji} <b>情感</b>：{s_label}")
 
