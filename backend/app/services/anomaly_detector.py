@@ -15,6 +15,93 @@ class AnomalyDetector:
     def __init__(self, db: Session):
         self.db = db
 
+    def detect(self, stock_code: Optional[str] = None) -> Dict[str, Any]:
+        """
+        检测财务数据异常（主入口，供API调用）
+
+        Args:
+            stock_code: 可选，过滤特定股票
+
+        Returns:
+            {anomaly_relations: [...], financial_anomalies: [...]}
+        """
+        return {
+            "anomaly_relations": self.detect_anomaly_relations(stock_code),
+            "financial_anomalies": self._detect_financial_anomalies(stock_code),
+        }
+
+    def _detect_financial_anomalies(self, stock_code: Optional[str] = None) -> List[Dict[str, Any]]:
+        """检测财务指标异常"""
+        from app.models.financial import Financial
+        from app.models.stock import Stock
+
+        anomalies = []
+
+        query = self.db.query(Financial, Stock.name).join(Stock, Financial.stock_code == Stock.stock_code)
+        if stock_code:
+            query = query.filter(Financial.stock_code == stock_code)
+
+        results = query.order_by(Financial.stock_code, Financial.report_date.desc()).limit(500).all()
+
+        # 按股票分组
+        by_stock = {}
+        for fin, name in results:
+            by_stock.setdefault(fin.stock_code, {"name": name, "records": []})
+            by_stock[fin.stock_code]["records"].append(fin)
+
+        for code, info in by_stock.items():
+            recs = info["records"]
+            if len(recs) < 2:
+                continue
+
+            curr, prev = recs[0], recs[1]
+
+            # ROE 大幅下降 >30%
+            if curr.roe is not None and prev.roe is not None and prev.roe > 0:
+                roe_change = (curr.roe - prev.roe) / prev.roe
+                if roe_change < -0.3:
+                    anomalies.append({
+                        "stock_code": code, "stock_name": info["name"],
+                        "type": "roe_decline", "risk_level": "high",
+                        "description": f"ROE从{prev.roe:.1f}%下降至{curr.roe:.1f}%，降幅{roe_change*100:.1f}%",
+                        "current": curr.roe, "previous": prev.roe,
+                        "report_date": str(curr.report_date)
+                    })
+
+            # 负债率飙升 >20%
+            if curr.debt_ratio is not None and prev.debt_ratio is not None:
+                debt_change = curr.debt_ratio - prev.debt_ratio
+                if debt_change > 20:
+                    anomalies.append({
+                        "stock_code": code, "stock_name": info["name"],
+                        "type": "debt_surge", "risk_level": "high",
+                        "description": f"负债率从{prev.debt_ratio:.1f}%升至{curr.debt_ratio:.1f}%，增加{debt_change:.1f}%",
+                        "current": curr.debt_ratio, "previous": prev.debt_ratio,
+                        "report_date": str(curr.report_date)
+                    })
+
+            # 营收增长但利润下降
+            if (curr.revenue_yoy is not None and curr.revenue_yoy > 10 and
+                curr.net_profit_yoy is not None and curr.net_profit_yoy < -10):
+                anomalies.append({
+                    "stock_code": code, "stock_name": info["name"],
+                    "type": "revenue_profit_diverge", "risk_level": "medium",
+                    "description": f"营收增长{curr.revenue_yoy:.1f}%但净利下降{curr.net_profit_yoy:.1f}%",
+                    "report_date": str(curr.report_date)
+                })
+
+            # 经营现金流连续为负
+            if len(recs) >= 2 and all(r.operating_cash_flow is not None and r.operating_cash_flow < 0 for r in recs[:3]):
+                anomalies.append({
+                    "stock_code": code, "stock_name": info["name"],
+                    "type": "negative_cashflow", "risk_level": "medium",
+                    "description": "经营现金流连续为负",
+                    "report_date": str(curr.report_date)
+                })
+
+        anomalies.sort(key=lambda x: {"high": 0, "medium": 1, "low": 2}.get(x.get("risk_level", "low"), 9))
+        return anomalies
+
     def detect_anomaly_relations(self, stock_code: Optional[str] = None) -> List[Dict[str, Any]]:
         """
         检测潜在的利益输送或异常关联
