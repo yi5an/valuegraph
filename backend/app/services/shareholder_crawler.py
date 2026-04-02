@@ -136,3 +136,61 @@ class ShareholderCrawler:
             self._running = False
 
         return self._progress
+
+    def fetch_institutional_holders(self, stock_code: str) -> List[Dict]:
+        """获取机构持仓数据（topType=2）"""
+        prefix = "SH" if stock_code.startswith("6") else "SZ"
+        params = {"code": f"{prefix}{stock_code}", "topType": "2"}
+        r = requests.get(EM_F10_API, params=params, headers=HEADERS, timeout=10)
+        data = r.json()
+        results = []
+        for item in data.get("jgcc", []):
+            results.append({
+                "institution_name": item.get("HOLDER_NAME", ""),
+                "institution_type": item.get("HOLDER_TYPE", ""),
+                "hold_amount": item.get("HOLD_NUM"),
+                "hold_ratio": item.get("HOLD_NUM_RATIO"),
+                "change_ratio": item.get("CHANGE_RATIO"),
+                "report_date": str(item.get("END_DATE", ""))[:10],
+            })
+        return results
+
+    def fetch_holder_changes(self, stock_code: str) -> List[Dict]:
+        """获取股东增减持变化"""
+        prefix = "SH" if stock_code.startswith("6") else "SZ"
+        params = {"code": f"{prefix}{stock_code}", "topType": "1"}
+        r = requests.get(EM_F10_API, params=params, headers=HEADERS, timeout=10)
+        data = r.json()
+        changes = []
+        for item in data.get("sdgd", []):
+            change = item.get("CHANGE", "")
+            if change and change != "不变":
+                changes.append({
+                    "holder_name": item.get("HOLDER_NAME", ""),
+                    "change": change,
+                    "hold_amount": item.get("HOLD_NUM"),
+                    "hold_ratio": item.get("HOLD_NUM_RATIO"),
+                    "change_amount": item.get("HOLD_NUM_CHANGE"),
+                    "report_date": str(item.get("END_DATE", ""))[:10],
+                })
+        return changes
+
+    def search_investor_holdings(self, investor_name: str, limit: int = 50) -> List[Dict]:
+        """搜索知名投资者在所有有数据的股票中的持仓"""
+        conn = sqlite3.connect(self.db_path)
+        c = conn.cursor()
+        c.execute(
+            """SELECT s.stock_code, s.holder_name, s.hold_amount, s.hold_ratio, s.report_date, s.holder_type
+               FROM shareholders s
+               WHERE s.holder_name LIKE ?
+               ORDER BY s.hold_ratio DESC
+               LIMIT ?""",
+            (f"%{investor_name}%", limit)
+        )
+        rows = c.fetchall()
+        conn.close()
+        return [
+            {"stock_code": r[0], "holder_name": r[1], "hold_amount": r[2],
+             "hold_ratio": r[3], "report_date": r[4], "holder_type": r[5]}
+            for r in rows
+        ]

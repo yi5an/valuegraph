@@ -4,34 +4,48 @@
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.schemas.shareholder import ShareholderResponse, ShareholderDetail
-from app.services.data_collector import AkShareCollector
+from app.schemas.shareholder import ShareholderResponse, ShareholderDetail, TopShareholder, InstitutionalHolder as InstHolderSchema
+from app.models.shareholder import Shareholder as SHModel, InstitutionalHolder as InstHolderModel
+from app.services.shareholder_crawler import ShareholderCrawler
 from app.utils.cache import cache
 from app.utils.rate_limiter import limiter
-from typing import List
+from typing import Optional
 from pydantic import BaseModel
+import os
 
 router = APIRouter()
 
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "valuegraph.db")
 
-class InstitutionalHolder(BaseModel):
-    """机构持仓"""
-    fund_name: str
-    fund_code: str
-    hold_amount: float = None
-    hold_ratio: float = None
-    hold_value: float = None
-    net_value_ratio: float = None
-    report_date: str = None
+# 知名投资者关键词列表
+FAMOUS_INVESTORS = [
+    "巴菲特", "高瓴", "社保基金", "证金公司", "汇金公司",
+    "挪威中央银行", "香港中央结算", "全国社保", "中金公司",
+    "摩根", "高盛", "UBS", "瑞银", "黑石",
+]
 
 
-class InstitutionalHolderResponse(BaseModel):
-    """机构持仓响应"""
-    success: bool
+class InstitutionalHolderItem(BaseModel):
+    """机构持仓响应项"""
+    institution_name: str
+    institution_type: Optional[str] = None
+    hold_amount: Optional[float] = None
+    hold_ratio: Optional[float] = None
+    change_ratio: Optional[float] = None
+    report_date: Optional[str] = None
+
+
+class InvestorHolding(BaseModel):
+    """投资者持仓项"""
     stock_code: str
-    data: List[InstitutionalHolder] = []
-    total: int = 0
+    holder_name: str
+    hold_amount: Optional[int] = None
+    hold_ratio: Optional[float] = None
+    report_date: Optional[str] = None
+    holder_type: Optional[str] = None
 
+
+# ==================== 原有接口 ====================
 
 @router.get("/{stock_code}", response_model=ShareholderResponse)
 async def get_shareholders(
@@ -39,171 +53,218 @@ async def get_shareholders(
     stock_code: str,
     db: Session = Depends(get_db)
 ):
-    """
-    获取股东信息
-    
-    - **stock_code**: 股票代码（如 600519）
-    """
+    """获取股东信息 - 十大股东"""
     cache_key = f"shareholder:{stock_code}"
-    
-    # 尝试从缓存获取
     cached = cache.get(cache_key)
     if cached:
         return ShareholderResponse(success=True, data=ShareholderDetail(**cached))
-    
+
     try:
-        # 先查数据库 shareholder 表
-        from app.models.shareholder import Shareholder as SHModel
         db_shareholders = db.query(SHModel).filter(
             SHModel.stock_code == stock_code
         ).order_by(SHModel.id.desc()).limit(10).all()
-        
+
         if db_shareholders:
             data = {
                 'stock_code': stock_code,
                 'top_10_shareholders': [
-                    {'name': s.holder_name, 'ratio': s.hold_ratio, 'amount': s.hold_amount}
+                    {'rank': s.rank, 'holder_name': s.holder_name, 'hold_amount': s.hold_amount,
+                     'hold_ratio': s.hold_ratio, 'holder_type': s.holder_type, 'change': s.change}
                     for s in db_shareholders
                 ],
-                'report_date': str(db_shareholders[0].report_date) if db_shareholders else ''
+                'report_date': str(db_shareholders[0].report_date) if db_shareholders else '',
+                'name': '',
+                'institutional_holders': [],
+                'holder_distribution': None,
             }
             cache.set(cache_key, data)
             shareholder_detail = ShareholderDetail(**data)
         else:
-            # 数据库无数据，返回暂无（不实时调 AkShare 避免阻塞）
             return ShareholderResponse(
                 success=False,
                 data=None,
                 message="暂无股东数据，请通过 /api/shareholders/sync 同步"
             )
-        
-        return ShareholderResponse(
-            success=True,
-            data=shareholder_detail
-        )
-    
+
+        return ShareholderResponse(success=True, data=shareholder_detail)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
 
 
-@router.get("/changes/{stock_code}")
-async def get_shareholder_changes(
-    request: Request,
-    stock_code: str
-):
-    """
-    获取股东增减持变化
-    
-    - **stock_code**: 股票代码（如 600519）
-    
-    返回近期股东增减持记录
-    """
-    cache_key = f"shareholder_changes:{stock_code}"
-    
-    # 尝试从缓存获取
-    cached = cache.get(cache_key)
-    if cached:
-        return {
-            'success': True,
-            'data': cached
-        }
-    
-    try:
-        import akshare as ak
-        
-        changes = []
-        data_available = False
-        
-        # 尝试获取股东增减持数据
-        try:
-            # 尝试获取股东增减持详情
-            df_changes = ak.stock_gdfx_free_holding_detail_em(symbol=stock_code)
-            
-            if df_changes is not None and not df_changes.empty:
-                data_available = True
-                for _, row in df_changes.head(20).iterrows():
-                    changes.append({
-                        'holder_name': row.get('股东名称', ''),
-                        'change_type': row.get('增减持', ''),
-                        'change_amount': row.get('增减持数量', None),
-                        'change_ratio': row.get('占流通股比例', None),
-                        'change_date': str(row.get('变动日期', '')),
-                        'after_holding': row.get('变动后持股数', None),
-                    })
-        except Exception as e:
-            # 此接口可能不可用，继续尝试其他接口
-            pass
-        
-        # 尝试获取股东户数变化
-        holder_count_changes = []
-        try:
-            df_count = ak.stock_zh_a_gdhs_detail_em(symbol=stock_code)
-            
-            if df_count is not None and not df_count.empty:
-                data_available = True
-                for _, row in df_count.head(10).iterrows():
-                    holder_count_changes.append({
-                        'report_date': str(row.get('股东户数统计截止日', '')),
-                        'holder_count': row.get('股东户数', None),
-                        'change_pct': row.get('股东户数较上期变化', None),
-                    })
-        except Exception as e:
-            # 此接口可能不可用
-            pass
-        
-        result = {
-            'stock_code': stock_code,
-            'changes': changes,
-            'holder_count_changes': holder_count_changes,
-            'data_available': data_available,
-            'message': '暂无数据' if not data_available else None
-        }
+# ==================== 机构持仓接口 ====================
 
-        # 写入缓存
-        cache.set(cache_key, result)
-
-        return {
-            'success': True,
-            'data': result
-        }
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
-
-
-@router.get("/institutional/{stock_code}", response_model=InstitutionalHolderResponse)
+@router.get("/institutional/{stock_code}")
 async def get_institutional_holders(
     request: Request,
-    stock_code: str
+    stock_code: str,
+    db: Session = Depends(get_db)
 ):
     """
     获取机构持仓数据
 
     - **stock_code**: 股票代码（如 600519）
 
-    返回基金持仓数据（作为机构持仓的代表）
+    优先从数据库读取，无数据时实时从东方财富 F10 抓取
     """
     cache_key = f"institutional_holders:{stock_code}"
-
-    # 尝试从缓存获取
     cached = cache.get(cache_key)
     if cached:
-        return InstitutionalHolderResponse(
-            success=True,
-            stock_code=stock_code,
-            data=[InstitutionalHolder(**h) for h in cached],
-            total=len(cached)
-        )
+        return {"success": True, "data": cached, "meta": {"stock_code": stock_code, "total": len(cached)}}
 
     try:
-        # 暂时返回空数据（AkShare 实时调用会阻塞，改为后台同步）
-        return InstitutionalHolderResponse(
-            success=True,
-            stock_code=stock_code,
-            data=[],
-            total=0,
-            message="机构持仓数据待同步"
-        )
+        # 先查数据库
+        db_records = db.query(InstHolderModel).filter(
+            InstHolderModel.stock_code == stock_code
+        ).order_by(InstHolderModel.hold_ratio.desc()).limit(50).all()
+
+        if db_records:
+            data = [
+                {
+                    "institution_name": r.institution_name,
+                    "institution_type": r.institution_type,
+                    "hold_amount": r.hold_amount,
+                    "hold_ratio": r.hold_ratio,
+                    "change_ratio": r.change_ratio,
+                    "report_date": str(r.report_date) if r.report_date else None,
+                }
+                for r in db_records
+            ]
+            cache.set(cache_key, data)
+            return {"success": True, "data": data, "meta": {"stock_code": stock_code, "total": len(data), "source": "db"}}
+
+        # 实时从东财 F10 抓取
+        crawler = ShareholderCrawler(db_path=DB_PATH)
+        data = crawler.fetch_institutional_holders(stock_code)
+
+        # 存入数据库
+        for item in data:
+            record = InstHolderModel(
+                stock_code=stock_code,
+                report_date=item.get("report_date") or "2024-12-31",
+                institution_name=item["institution_name"],
+                institution_type=item.get("institution_type"),
+                hold_amount=item.get("hold_amount"),
+                hold_ratio=item.get("hold_ratio"),
+                change_ratio=item.get("change_ratio"),
+            )
+            db.add(record)
+        if data:
+            db.commit()
+
+        cache.set(cache_key, data)
+        return {"success": True, "data": data, "meta": {"stock_code": stock_code, "total": len(data), "source": "live"}}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+
+# ==================== 知名投资者持仓接口 ====================
+
+@router.get("/investor/{investor_name}")
+async def get_investor_holdings(
+    request: Request,
+    investor_name: str,
+    limit: int = Query(default=50, le=200),
+    db: Session = Depends(get_db)
+):
+    """
+    查询知名投资者持仓一览
+
+    - **investor_name**: 投资者名称或关键词（如 社保基金、高瓴、巴菲特）
+    - **limit**: 返回条数上限
+
+    遍历所有有股东数据的股票，查找股东名包含关键词的记录
+    """
+    cache_key = f"investor:{investor_name}:{limit}"
+    cached = cache.get(cache_key)
+    if cached:
+        return {"success": True, "data": cached, "meta": {"investor_name": investor_name, "total": len(cached)}}
+
+    try:
+        crawler = ShareholderCrawler(db_path=DB_PATH)
+        holdings = crawler.search_investor_holdings(investor_name, limit)
+
+        cache.set(cache_key, holdings)
+        return {
+            "success": True,
+            "data": holdings,
+            "meta": {
+                "investor_name": investor_name,
+                "total": len(holdings),
+                "hint": f"搜索关键词: {investor_name}" if len(holdings) == 0 else None,
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")
+
+
+@router.get("/investor")
+async def list_famous_investors():
+    """获取内置知名投资者列表"""
+    return {
+        "success": True,
+        "data": FAMOUS_INVESTORS,
+        "meta": {"total": len(FAMOUS_INVESTORS), "usage": "GET /api/shareholders/investor/{name} 查询具体投资者持仓"}
+    }
+
+
+# ==================== 持股变化监控接口 ====================
+
+@router.get("/changes/{stock_code}")
+async def get_shareholder_changes(
+    request: Request,
+    stock_code: str,
+    db: Session = Depends(get_db)
+):
+    """
+    获取股东增减持变化
+
+    - **stock_code**: 股票代码（如 600519）
+
+    返回近期大股东增减持变动记录
+    """
+    cache_key = f"shareholder_changes:{stock_code}"
+    cached = cache.get(cache_key)
+    if cached:
+        return {"success": True, "data": cached, "meta": {"stock_code": stock_code, "total": len(cached.get("changes", []))}}
+
+    try:
+        # 先查数据库中已有变化记录
+        db_changes = db.query(SHModel).filter(
+            SHModel.stock_code == stock_code,
+            SHModel.change.isnot(None),
+            SHModel.change != "",
+        ).order_by(SHModel.report_date.desc()).limit(20).all()
+
+        changes = [
+            {
+                "holder_name": s.holder_name,
+                "change": s.change,
+                "hold_amount": s.hold_amount,
+                "hold_ratio": s.hold_ratio,
+                "report_date": str(s.report_date) if s.report_date else None,
+            }
+            for s in db_changes
+        ]
+
+        # 如果数据库记录不足，实时从东财补充
+        if len(changes) < 5:
+            crawler = ShareholderCrawler(db_path=DB_PATH)
+            live_changes = crawler.fetch_holder_changes(stock_code)
+            # 合并去重
+            existing_names = {c["holder_name"] for c in changes}
+            for lc in live_changes:
+                if lc["holder_name"] not in existing_names:
+                    changes.append(lc)
+
+        result = {
+            "stock_code": stock_code,
+            "changes": changes,
+            "total": len(changes),
+        }
+
+        cache.set(cache_key, result)
+        return {"success": True, "data": result, "meta": {"stock_code": stock_code, "total": len(changes)}}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"查询失败: {str(e)}")

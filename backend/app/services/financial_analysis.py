@@ -81,6 +81,17 @@ class FinancialService:
                 'gross_margin': fin.gross_margin,
                 'debt_ratio': fin.debt_ratio,
                 'operating_cash_flow': fin.operating_cash_flow,
+                'investing_cash_flow': fin.investing_cash_flow,
+                'financing_cash_flow': fin.financing_cash_flow,
+                'free_cash_flow': fin.free_cash_flow,
+                'current_assets': fin.current_assets,
+                'current_liabilities': fin.current_liabilities,
+                'inventory': fin.inventory,
+                'accounts_receivable': fin.accounts_receivable,
+                'monetary_fund': fin.monetary_fund,
+                'current_ratio': fin.current_ratio,
+                'quick_ratio': fin.quick_ratio,
+                'roa': fin.roa,
                 'eps': fin.eps,
                 'bvps': fin.bvps,
             })
@@ -145,22 +156,34 @@ class FinancialService:
         if latest.gross_margin:
             profitability += min(latest.gross_margin / 50 * 50, 50)  # 毛利率贡献50分
         
-        # 偿债能力 (负债率)
+        # 偿债能力 (流动比率 + 负债率)
         solvency = 0
+        if latest.current_ratio:
+            # 流比率 2.0 = 100分，< 1.0 = 0分
+            solvency += min(max((latest.current_ratio - 1.0) / 1.0 * 60, 0), 60)
         if latest.debt_ratio:
-            solvency = max(100 - latest.debt_ratio, 0)
+            # 负债率 < 50% = 40分，> 80% = 0分
+            solvency += max(40 - (latest.debt_ratio - 50) * 1.33, 0) if latest.debt_ratio > 50 else 40
+        solvency = min(int(solvency), 100)
         
         # 成长能力 (营收增长)
         growth = 0
         if latest.revenue_yoy:
             growth = min(max(latest.revenue_yoy, 0), 100)
         
-        # 运营能力 (现金流)
+        # 运营能力 (现金流三维度)
         operation = 0
-        if latest.operating_cash_flow and latest.operating_cash_flow > 0:
-            operation = 100
-        elif latest.operating_cash_flow and latest.operating_cash_flow < 0:
-            operation = 30
+        ocf = latest.operating_cash_flow
+        icf = latest.investing_cash_flow
+        fcf = latest.free_cash_flow
+        if ocf and ocf > 0:
+            operation += 40  # 经营现金流转正40分
+        if fcf and fcf > 0:
+            operation += 30  # 自由现金流转正30分
+        if icf and icf < 0:
+            operation += 30  # 投资支出（扩张）30分
+        elif ocf and ocf > 0:
+            operation += 15  # 经营正向但无投资 = 保守
         
         # 综合评分
         overall = int((profitability + solvency + growth + operation) / 4)

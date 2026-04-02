@@ -49,6 +49,33 @@ class NewsScheduler:
             replace_existing=True
         )
         
+        # 每 30 分钟采集雪球新闻
+        self.scheduler.add_job(
+            self._sync_xueqiu_news,
+            trigger=IntervalTrigger(minutes=30),
+            id='sync_xueqiu',
+            name='同步雪球新闻',
+            replace_existing=True
+        )
+        
+        # 每 30 分钟采集新浪财经新闻
+        self.scheduler.add_job(
+            self._sync_sina_news,
+            trigger=IntervalTrigger(minutes=30),
+            id='sync_sina',
+            name='同步新浪财经新闻',
+            replace_existing=True
+        )
+        
+        # 每 30 分钟检查并推送重要新闻到 TG
+        self.scheduler.add_job(
+            self._push_important_news,
+            trigger=IntervalTrigger(minutes=30),
+            id='push_important_news',
+            name='推送重要新闻到TG',
+            replace_existing=True
+        )
+        
         # 每天 02:00 增量同步财务数据（500只/次）
         self.scheduler.add_job(
             self._sync_financials,
@@ -260,6 +287,94 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"36氪新闻采集失败: {e}")
     
+    async def _sync_xueqiu_news(self):
+        """采集雪球新闻"""
+        logger.info("📰 开始采集雪球新闻...")
+        try:
+            from app.services.news_collector import NewsCollector
+            from app.database import SessionLocal
+            from app.models.news import News
+            
+            collector = NewsCollector()
+            db = SessionLocal()
+            try:
+                news_list = collector.fetch_xueqiu_news(limit=20)
+                if not news_list:
+                    logger.info("无新雪球新闻")
+                    return
+                
+                new_count = 0
+                for item in news_list:
+                    existing = db.query(News).filter(News.url == item.get('url')).first()
+                    if existing:
+                        continue
+                    news = News(
+                        title=item.get('title', ''),
+                        content=item.get('content', ''),
+                        source='雪球',
+                        keywords=item.get('keywords', ''),
+                        published_at=item.get('published_at', ''),
+                        url=item.get('url', ''),
+                        stock_code=item.get('stock_code'),
+                    )
+                    db.add(news)
+                    new_count += 1
+                
+                db.commit()
+                logger.info(f"📰 雪球新闻采集完成：新增 {new_count} 条")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"雪球新闻采集失败: {e}")
+    
+    async def _sync_sina_news(self):
+        """采集新浪财经新闻"""
+        logger.info("📰 开始采集新浪财经新闻...")
+        try:
+            from app.services.news_collector import NewsCollector
+            from app.database import SessionLocal
+            from app.models.news import News
+            
+            collector = NewsCollector()
+            db = SessionLocal()
+            try:
+                news_list = collector.fetch_sina_news(limit=20)
+                if not news_list:
+                    logger.info("无新新浪财经新闻")
+                    return
+                
+                new_count = 0
+                for item in news_list:
+                    existing = db.query(News).filter(News.url == item.get('url')).first()
+                    if existing:
+                        continue
+                    news = News(
+                        title=item.get('title', ''),
+                        content=item.get('content', ''),
+                        source='新浪财经',
+                        keywords=item.get('keywords', ''),
+                        published_at=item.get('published_at', ''),
+                        url=item.get('url', ''),
+                        stock_code=item.get('stock_code'),
+                    )
+                    db.add(news)
+                    new_count += 1
+                
+                db.commit()
+                logger.info(f"📰 新浪财经新闻采集完成：新增 {new_count} 条")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"新浪财经新闻采集失败: {e}")
+    
+    async def _push_important_news(self):
+        """推送重要新闻到 Telegram"""
+        try:
+            from app.services.notification import TelegramNotifier
+            await TelegramNotifier.push_important_news()
+        except Exception as e:
+            logger.error(f"TG推送任务失败: {e}")
+
     async def _sync_financials(self):
         """每天增量同步财务数据"""
         logger.info("📊 开始增量同步财务数据...")

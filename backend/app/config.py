@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     rate_limit_enabled: bool = True
     rate_limit_per_minute: int = 60
     
+    # Telegram Bot 配置
+    tg_bot_token: str = ""
+    tg_chat_id: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
