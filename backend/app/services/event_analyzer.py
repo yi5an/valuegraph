@@ -2,6 +2,7 @@
 事件分析流水线 - 新闻入库后自动执行：实体抽取 → 关系构建 → 情感分析 → 投资建议 → 推送
 """
 import logging
+import asyncio
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -31,6 +32,16 @@ class EventAnalyzer:
         self._extractor = None
         self._kg = None
         self._sentiment = None
+        self._last_llm_call = 0.0
+        self.LLM_INTERVAL = 3.0  # GLM API 请求间隔(秒)，避免 429
+
+    async def _llm_wait(self):
+        """控制 LLM 调用频率"""
+        import time
+        elapsed = time.time() - self._last_llm_call
+        if elapsed < self.LLM_INTERVAL:
+            await asyncio.sleep(self.LLM_INTERVAL - elapsed)
+        self._last_llm_call = time.time()
 
     def _get_extractor(self):
         if self._extractor is None:
@@ -87,6 +98,7 @@ class EventAnalyzer:
 
         # Step 3: 情感分析（LLM + 规则兜底）
         try:
+            await self._llm_wait()
             raw = await self._get_sentiment().analyze(news.title + (news.content or ""))
             sentiment = {
                 "label": raw.get("sentiment", "neutral"),
