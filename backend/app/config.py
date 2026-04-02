@@ -34,6 +34,11 @@ class Settings(BaseSettings):
     tg_bot_token: str = ""
     tg_chat_id: str = ""
     
+    # LLM 配置（情感分析 + 实体抽取）
+    llm_api_base: str = ""
+    llm_api_key: str = ""
+    llm_model: str = ""
+    
     class Config:
         env_file = ".env"
         case_sensitive = False
