@@ -541,3 +541,65 @@ async def get_collect_status():
             "success": False,
             "error": str(e)
         }
+
+
+@router.post("/analyze/batch")
+async def analyze_recent_news(
+    background_tasks: BackgroundTasks,
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
+    """
+    手动触发批量事件分析（最近 N 条未分析新闻）
+    """
+    from datetime import datetime, timedelta
+    from app.services.event_analyzer import EventAnalyzer
+
+    recent = db.query(News).filter(
+        News.event_type.is_(None)
+    ).order_by(News.id.desc()).limit(limit).all()
+
+    if not recent:
+        return {"success": True, "data": {"analyzed": 0, "pushed": 0, "message": "无待分析新闻"}}
+
+    analyzer = EventAnalyzer(db)
+    try:
+        analyzed = 0
+        pushed = 0
+        results = []
+        for news in recent:
+            try:
+                report = await analyzer.analyze_and_push(news)
+                analyzed += 1
+                impact = report.get("impact", {})
+                if impact.get("level") in ("high_positive", "high_negative", "positive", "negative"):
+                    pushed += 1
+                results.append({"news_id": news.id, "title": news.title[:30], "event_type": news.event_type})
+            except Exception as e:
+                results.append({"news_id": news.id, "error": str(e)})
+
+        return {"success": True, "data": {"analyzed": analyzed, "pushed": pushed, "results": results}}
+    finally:
+        analyzer.close()
+
+
+@router.post("/analyze/{news_id}")
+async def analyze_single_news(
+    news_id: int,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db)
+):
+    """
+    手动触发单条新闻的完整事件分析（实体+关系+情感+建议+推送）
+    """
+    news = db.query(News).filter(News.id == news_id).first()
+    if not news:
+        raise HTTPException(status_code=404, detail=f"新闻 {news_id} 不存在")
+
+    from app.services.event_analyzer import EventAnalyzer
+    analyzer = EventAnalyzer(db)
+    try:
+        report = await analyzer.analyze_and_push(news)
+        return {"success": True, "data": report}
+    finally:
+        analyzer.close()

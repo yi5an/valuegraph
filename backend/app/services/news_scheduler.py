@@ -40,12 +40,12 @@ class NewsScheduler:
             replace_existing=True
         )
         
-        # 每 30 分钟对最新新闻做实体抽取和关系录入
+        # 每 30 分钟对最新新闻做实体抽取、关系录入、情感分析、投资建议推送
         self.scheduler.add_job(
-            self._process_new_entities,
+            self._process_and_analyze_events,
             trigger=IntervalTrigger(minutes=30),
-            id='process_entities',
-            name='实体抽取与关系录入',
+            id='process_events',
+            name='事件分析与推送',
             replace_existing=True
         )
         
@@ -213,52 +213,49 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"个股新闻采集失败: {e}")
     
-    async def _process_new_entities(self):
-        """对未处理的新闻做实体抽取和关系录入"""
-        logger.info("🔍 开始实体抽取与关系录入...")
+    async def _process_and_analyze_events(self):
+        """对最新新闻做实体抽取 + 关系构建 + 情感分析 + 投资建议 + 推送"""
+        logger.info("🔍 开始事件分析流水线...")
         try:
             from app.database import SessionLocal
             from app.models.news import News
-            from app.services.entity_extractor import EntityExtractor
-            from app.services.knowledge_graph import KnowledgeGraphService
-            
+            from app.services.event_analyzer import EventAnalyzer
+
             db = SessionLocal()
-            extractor = None
+            analyzer = None
             try:
-                # 获取最近未抽取的新闻（最近24小时，按 id 降序，限制100条）
-                # 用简单标记：新闻表如果没有 processed 字段，就按 id > last_processed_id
-                # 为简单起见，每次处理最新 50 条
-                recent_news = db.query(News).order_by(News.id.desc()).limit(50).all()
-                
+                # 只处理最近30分钟内、尚未标记 event_type 的新闻
+                from datetime import datetime, timedelta
+                threshold = datetime.now() - timedelta(minutes=35)
+                recent_news = db.query(News).filter(
+                    News.event_type.is_(None)
+                ).order_by(News.id.desc()).limit(30).all()
+
                 if not recent_news:
-                    logger.info("无待处理新闻")
+                    logger.info("无待分析新闻")
                     return
-                
-                extractor = EntityExtractor(db=db)
-                total_entities = 0
-                total_relations = 0
-                processed = 0
-                
+
+                analyzer = EventAnalyzer(db)
+                analyzed = 0
+                pushed = 0
+
                 for news in recent_news:
                     try:
-                        result = await extractor.extract_from_news(
-                            title=news.title,
-                            content=news.content,
-                            stock_code=news.stock_code
-                        )
-                        total_entities += len(result['entities'])
-                        total_relations += len(result['relations'])
-                        processed += 1
+                        report = await analyzer.analyze_and_push(news)
+                        analyzed += 1
+                        impact = report.get("impact", {})
+                        if impact.get("level") in ("high_positive", "high_negative", "positive", "negative"):
+                            pushed += 1
                     except Exception as e:
-                        logger.warning(f"处理新闻失败: {e}")
-                
-                logger.info(f"🔍 实体抽取完成：处理 {processed} 条，新增 {total_entities} 实体，{total_relations} 关系")
+                        logger.warning(f"分析新闻失败(id={news.id}): {e}")
+
+                logger.info(f"🔍 事件分析完成：分析 {analyzed} 条，推送 {pushed} 条")
             finally:
-                if extractor:
-                    extractor.close()
+                if analyzer:
+                    analyzer.close()
                 db.close()
         except Exception as e:
-            logger.error(f"实体抽取失败: {e}")
+            logger.error(f"事件分析流水线失败: {e}")
     
     async def _sync_36kr_news(self):
         """采集36氪科技新闻"""
