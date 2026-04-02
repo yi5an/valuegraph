@@ -103,9 +103,36 @@ class NewsScheduler:
             replace_existing=True
         )
         
+        # 每 6 小时：关联新闻到股票 + 补全情感分析
+        self.scheduler.add_job(
+            self._associate_and_analyze,
+            trigger=IntervalTrigger(hours=6),
+            id='associate_sentiment',
+            name='新闻关联与情感分析',
+            replace_existing=True
+        )
+
         self.scheduler.start()
         logger.info("📰 新闻采集调度器已启动")
-    
+
+        # 启动时立即执行一次关联和情感分析
+        self._associate_and_analyze()
+
+    def _associate_and_analyze(self):
+        """关联未关联的新闻到股票，并补全情感分析"""
+        try:
+            from app.database import SessionLocal
+            from app.services.news_collector import associate_news_with_stocks, backfill_sentiment
+
+            db = SessionLocal()
+            try:
+                associate_news_with_stocks(db)
+                backfill_sentiment(db)
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"新闻关联/情感分析失败: {e}")
+
     async def _sync_hot_news(self):
         """采集热点新闻（财联社）"""
         logger.info("📰 开始采集热点新闻...")

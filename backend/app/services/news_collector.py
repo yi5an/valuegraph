@@ -2,12 +2,157 @@
 新闻采集服务
 使用 AkShare 采集东方财富和财联社的新闻
 """
+import re
 import akshare as ak
 from typing import List, Dict, Optional
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+# ===== 情感分析关键词 =====
+_POSITIVE_KEYWORDS = [
+    "涨", "增长", "超", "创新高", "大涨", "利好", "突破", "上涨", "回升",
+    "攀升", "增收", "盈利", "亮眼", "强劲", "乐观", "大涨", "暴涨",
+    "净利", "利润", "收入", "中标", "获批", "签约",
+]
+_NEGATIVE_KEYWORDS = [
+    "跌", "降", "减", "亏损", "暴跌", "利空", "下滑", "回落", "收缩",
+    "预警", "风险", "下调", "减持", "违规", "处罚", "退市", "暴跌",
+    "亏损", "下降", "缩减",
+]
+_EVENT_TYPE_RULES = [
+    ("业绩", ["营收", "利润", "财报", "业绩", "净利", "收入", "盈利", "亏损"]),
+    ("政策", ["政策", "监管", "国务院", "央行", "发改委", "证监会", "银保监", "法案"]),
+    ("行业", ["行业", "板块", "赛道", "产业链", "概念", "题材"]),
+]
+
+
+def classify_sentiment(text: str) -> Dict:
+    """
+    基于规则的情感分析（无外部依赖）
+    Returns: {"sentiment": "正面"|"负面"|"中性", "score": float}
+    """
+    if not text:
+        return {"sentiment": "中性", "score": 0.0}
+
+    pos_count = sum(1 for kw in _POSITIVE_KEYWORDS if kw in text)
+    neg_count = sum(1 for kw in _NEGATIVE_KEYWORDS if kw in text)
+    total = pos_count + neg_count
+
+    if total == 0:
+        return {"sentiment": "中性", "score": 0.0}
+
+    score = (pos_count - neg_count) / total
+    if score > 0.2:
+        sentiment = "正面"
+    elif score < -0.2:
+        sentiment = "负面"
+    else:
+        sentiment = "中性"
+
+    return {"sentiment": sentiment, "score": round(score, 2)}
+
+
+def classify_event_type(text: str) -> str:
+    """基于规则的事件类型分类"""
+    if not text:
+        return "general"
+    for etype, keywords in _EVENT_TYPE_RULES:
+        if any(kw in text for kw in keywords):
+            return etype
+    return "general"
+
+
+def associate_news_with_stocks(db_session) -> int:
+    """
+    将 stock_code IS NULL 的新闻与股票关联
+    通过标题/内容中的股票名称或代码匹配
+    Returns: 更新的记录数
+    """
+    from app.models.news import News
+    from app.models.stock import Stock
+
+    # 批量获取所有股票
+    stocks = db_session.query(Stock.stock_code, Stock.name).filter(Stock.market == "A").all()
+    if not stocks:
+        return 0
+
+    # 构建匹配字典
+    code_to_name = {}
+    for s in stocks:
+        code = s.stock_code.zfill(6)
+        name = s.name or ""
+        if name and len(name) >= 2:
+            code_to_name[code] = name
+
+    # 获取未关联的新闻
+    unlinked = db_session.query(News).filter(News.stock_code.is_(None)).all()
+    if not unlinked:
+        return 0
+
+    updated = 0
+    # 构建 2-4 字符代码模式
+    code_pattern = re.compile(r'(?:60|00|30)\d{4}')
+
+    for news in unlinked:
+        text = f"{news.title or ''} {news.content or ''}"
+        if not text.strip():
+            continue
+
+        matched_code = None
+
+        # 先尝试匹配股票代码
+        codes_found = code_pattern.findall(text)
+        if codes_found:
+            for c in codes_found:
+                if c in code_to_name:
+                    matched_code = c
+                    break
+
+        # 再尝试匹配股票名称（仅检查长度>=2的名称）
+        if not matched_code:
+            for code, name in code_to_name.items():
+                if name in text:
+                    matched_code = code
+                    break
+
+        if matched_code:
+            news.stock_code = matched_code
+            updated += 1
+
+    if updated > 0:
+        db_session.commit()
+        logger.info(f"✅ 新闻关联股票完成，更新 {updated} 条")
+
+    return updated
+
+
+def backfill_sentiment(db_session) -> int:
+    """
+    对 sentiment IS NULL 的新闻进行情感和事件类型补全
+    Returns: 更新的记录数
+    """
+    from app.models.news import News
+
+    unanalyzed = db_session.query(News).filter(News.sentiment.is_(None)).all()
+    if not unanalyzed:
+        return 0
+
+    updated = 0
+    for news in unanalyzed:
+        text = f"{news.title or ''} {news.content or ''}"
+        result = classify_sentiment(text)
+        event_type = classify_event_type(text)
+        news.sentiment = result["sentiment"]
+        news.event_type = event_type
+        updated += 1
+
+    if updated > 0:
+        db_session.commit()
+        logger.info(f"✅ 情感分析补全完成，更新 {updated} 条")
+
+    return updated
 
 
 class NewsCollector:

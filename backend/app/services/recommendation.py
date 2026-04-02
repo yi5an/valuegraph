@@ -102,6 +102,9 @@ class RecommendationService:
                 spot_data = fetch_spot_for_stocks(codes)
                 results, dynamic_meta = apply_dynamic_scores(results, spot_data)
                 self._dynamic_metadata = dynamic_meta
+
+                # 生成丰富推荐理由
+                self._enrich_reasons(results, spot_data)
             else:
                 self._dynamic_metadata = {}
             
@@ -278,6 +281,45 @@ class RecommendationService:
         logger.info(f"✅ 同步股票列表成功，新增 {count} 只")
         return count
     
+    def _enrich_reasons(self, results: List[Dict], spot_data: Dict) -> None:
+        """用丰富理由替换简单理由"""
+        from app.services.reason_builder import build_rich_reason, fetch_recent_news
+
+        for item in results:
+            try:
+                code = item.get("stock_code", "")
+                recent_news = fetch_recent_news(self.db, code)
+                spot_info = spot_data.get(code) if spot_data else None
+
+                financial_metrics = {
+                    "roe": item.get("latest_roe"),
+                    "gross_margin": item.get("gross_margin"),
+                    "debt_ratio": item.get("debt_ratio"),
+                    "revenue_yoy": item.get("revenue_yoy"),
+                    "net_profit_yoy": item.get("net_profit_growth"),
+                    "operating_cash_flow": item.get("operating_cash_flow"),
+                    "eps": item.get("eps"),
+                    "net_profit": None,
+                }
+
+                score_detail = item.get("score_detail") or {}
+
+                rich = build_rich_reason(
+                    stock_code=code,
+                    name=item.get("name", ""),
+                    industry=item.get("industry", ""),
+                    grade=item.get("grade", ""),
+                    score_detail=score_detail,
+                    financial_metrics=financial_metrics,
+                    spot_info=spot_info,
+                    recent_news=recent_news,
+                )
+
+                item["recommendation_reason"] = rich["recommendation_reason"]
+                item["reason_sections"] = rich["reason_sections"]
+            except Exception as e:
+                logger.warning(f"丰富理由生成失败 {code}: {e}")
+
     def get_available_strategies(self) -> List[Dict]:
         """获取所有可用策略的信息"""
         strategies = []
