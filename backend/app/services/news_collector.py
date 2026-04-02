@@ -227,6 +227,16 @@ class NewsCollector:
             feed = feedparser.parse("https://36kr.com/feed")
             results = []
             for entry in feed.entries[:limit]:
+                image_url = ""
+                # Try media:thumbnail
+                if entry.get("media_thumbnail"):
+                    image_url = entry["media_thumbnail"][0].get("url", "")
+                # Try enclosure
+                if not image_url and entry.get("enclosures"):
+                    for enc in entry["enclosures"]:
+                        if enc.get("type", "").startswith("image"):
+                            image_url = enc.get("href", enc.get("url", ""))
+                            break
                 results.append({
                     "title": entry.get("title", ""),
                     "content": entry.get("summary", ""),
@@ -234,8 +244,27 @@ class NewsCollector:
                     "keywords": "",
                     "published_at": entry.get("published", ""),
                     "url": entry.get("link", ""),
+                    "image_url": image_url or None,
                 })
             return results
         except Exception as e:
             logging.getLogger(__name__).error(f"36氪采集失败: {e}")
             return []
+
+    @staticmethod
+    async def fetch_og_image(url: str) -> str:
+        """从 URL 抓取 og:image，3秒超时"""
+        if not url:
+            return None
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=3, follow_redirects=True) as client:
+                resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0"}, limit=10240)
+                text = resp.text[:10240]
+                import re
+                match = re.search(r'<meta[^>]+property=["\']og:image["\'][^>]+content=["\']([^"\']+)["\']', text)
+                if not match:
+                    match = re.search(r'<meta[^>]+content=["\']([^"\']+)["\'][^>]+property=["\']og:image["\']', text)
+                return match.group(1).strip() if match else None
+        except Exception:
+            return None

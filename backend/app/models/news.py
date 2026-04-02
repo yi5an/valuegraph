@@ -18,6 +18,7 @@ class News(Base):
     keywords = Column(String(200), comment="关键词")
     published_at = Column(String(50), comment="发布时间")
     url = Column(String(1000), comment="原文链接")
+    image_url = Column(String(1000), comment="新闻图片URL")
     sentiment = Column(String(20), comment="情感标签（正面/负面/中性）")
     event_type = Column(String(50), comment="事件类型（general/policy/investor_comment等）")
     created_at = Column(DateTime, server_default=func.now(), comment="创建时间")

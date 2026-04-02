@@ -61,6 +61,33 @@ def save_news_to_db(db: Session, news_list: list):
         db: 数据库会话
         news_list: 新闻列表（字典格式）
     """
+    import asyncio
+    
+    async def _fetch_missing_images(news_list):
+        """为新文章补充 og:image"""
+        tasks = []
+        for news_data in news_list:
+            if not news_data.get('image_url') and news_data.get('url'):
+                tasks.append(NewsCollector.fetch_og_image(news_data['url']))
+            else:
+                tasks.append(asyncio.sleep(0, result=news_data.get('image_url')))
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        for i, img in enumerate(results):
+            if isinstance(img, str) and img and not news_list[i].get('image_url'):
+                news_list[i]['image_url'] = img
+    
+    # Run async og:image fetch for new articles
+    try:
+        loop = asyncio.get_event_loop()
+        if loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                pool.submit(asyncio.run, _fetch_missing_images(news_list)).result(timeout=30)
+        else:
+            loop.run_until_complete(_fetch_missing_images(news_list))
+    except Exception as e:
+        logger.warning(f"og:image 抓取失败: {e}")
+    
     for news_data in news_list:
         # 检查是否已存在（通过 URL 去重）
         existing = db.query(News).filter(News.url == news_data.get('url')).first()
@@ -73,7 +100,8 @@ def save_news_to_db(db: Session, news_list: list):
                 stock_code=news_data.get('stock_code'),
                 keywords=news_data.get('keywords', ''),
                 published_at=news_data.get('published_at', ''),
-                url=news_data.get('url', '')
+                url=news_data.get('url', ''),
+                image_url=news_data.get('image_url')
             )
             db.add(news)
     
