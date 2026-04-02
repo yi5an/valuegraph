@@ -6,6 +6,7 @@ import { getFinancials, getAnomalies } from "@/lib/api";
 import { FinancialRecord, AnomalyItem } from "@/lib/types";
 import { FinancialChart } from "@/components/FinancialChart";
 import { RadarChart } from "@/components/RadarChart";
+import { DupontChart } from "@/components/DupontChart";
 import { cn } from "@/lib/utils";
 
 // 预定义的股票列表（用于搜索建议）
@@ -33,6 +34,7 @@ export function ClientFinancialPage({
   const [anomalies, setAnomalies] = useState<AnomalyItem[]>([]);
   const [hasAnomaly, setHasAnomaly] = useState(false);
   const [loadingAnomalies, setLoadingAnomalies] = useState(false);
+  const [activeTab, setActiveTab] = useState<"overview" | "dupont">("overview");
 
   const filtered = useMemo(
     () =>
@@ -123,6 +125,40 @@ export function ClientFinancialPage({
         </div>
       </section>
 
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          className={cn(
+            "rounded-full border px-5 py-2 text-sm transition",
+            activeTab === "overview"
+              ? "border-primary bg-primary/15 text-primary"
+              : "border-white/10 text-slate-300 hover:bg-white/5"
+          )}
+          onClick={() => setActiveTab("overview")}
+        >
+          综合概览
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "rounded-full border px-5 py-2 text-sm transition",
+            activeTab === "dupont"
+              ? "border-primary bg-primary/15 text-primary"
+              : "border-white/10 text-slate-300 hover:bg-white/5"
+          )}
+          onClick={() => setActiveTab("dupont")}
+        >
+          杜邦分析
+        </button>
+      </div>
+
+      {activeTab === "dupont" ? (
+        <section className="rounded-3xl border border-white/10 bg-card/80 p-5 shadow-panel">
+          <DupontChart />
+        </section>
+      ) : (
+      <>
       {loading && (
         <div className="rounded-3xl border border-white/10 bg-card/80 p-8 text-slate-300">
           加载财报数据中...
@@ -225,6 +261,8 @@ export function ClientFinancialPage({
             )}
           </section>
         </>
+      )}
+      </>
       )}
     </div>
   );

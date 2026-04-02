@@ -444,6 +444,57 @@ async def get_related_news(
         raise HTTPException(status_code=500, detail=f"获取关联新闻失败: {str(e)}")
 
 
+@router.get("/twitter", response_model=NewsResponse)
+async def get_twitter_news(
+    request: Request,
+    limit: int = 50,
+    db: Session = Depends(get_db)
+):
+    """
+    获取 Twitter 监控新闻
+
+    - 返回 source='twitter' 的新闻，按时间倒序
+    - **limit**: 返回数量（默认 50）
+    """
+    try:
+        news_items = db.query(News).filter(
+            News.source == "twitter"
+        ).order_by(News.created_at.desc()).limit(limit).all()
+
+        data = [NewsItem.from_orm(news) for news in news_items]
+        data = await add_sentiment_to_news(data)
+
+        return NewsResponse(
+            success=True,
+            data=data,
+            meta={'source': 'twitter_monitor', 'count': len(data)}
+        )
+    except Exception as e:
+        logger.error(f"获取 Twitter 监控新闻失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/twitter/influencers")
+async def get_twitter_influencers():
+    """
+    获取 Twitter 监控列表和状态
+
+    - 返回所有被监控的投资者/机构信息
+    - 包含最近采集状态和关键词配置
+    """
+    try:
+        from app.services.twitter_monitor import get_influencer_status
+        influencers = get_influencer_status()
+        return {
+            "success": True,
+            "data": influencers,
+            "meta": {"count": len(influencers)}
+        }
+    except Exception as e:
+        logger.error(f"获取监控列表失败: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @router.post("/collect")
 async def trigger_collection(background_tasks: BackgroundTasks):
     """手动触发一次完整采集流水线"""

@@ -58,6 +58,15 @@ class NewsScheduler:
             replace_existing=True
         )
         
+        # 每 30 分钟采集 Twitter 监控
+        self.scheduler.add_job(
+            self._sync_twitter_news,
+            trigger=IntervalTrigger(minutes=30),
+            id='sync_twitter',
+            name='同步Twitter监控',
+            replace_existing=True
+        )
+        
         # 每 30 分钟采集新浪财经新闻
         self.scheduler.add_job(
             self._sync_sina_news,
@@ -376,6 +385,22 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"新浪财经新闻采集失败: {e}")
     
+    async def _sync_twitter_news(self):
+        """采集 Twitter 监控新闻"""
+        logger.info("🐦 开始采集 Twitter 监控...")
+        try:
+            from app.services.twitter_monitor import run_twitter_monitor
+            from app.database import SessionLocal
+            
+            db = SessionLocal()
+            try:
+                result = await run_twitter_monitor(db)
+                logger.info(f"🐦 Twitter 监控完成：抓取 {result['total_fetched']}，新增 {result['total_new']}")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Twitter 监控采集失败: {e}")
+
     async def _push_important_news(self):
         """推送重要新闻到 Telegram"""
         try:
