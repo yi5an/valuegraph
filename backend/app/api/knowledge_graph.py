@@ -9,6 +9,7 @@ from app.database import get_db
 from app.models.news import News
 from app.services.knowledge_graph import KnowledgeGraphService
 from app.services.entity_extractor import EntityExtractor
+from app.services.graph_algorithms import GraphAlgorithms
 
 router = APIRouter()
 
@@ -240,6 +241,50 @@ async def sync_news(db: Session = Depends(get_db)):
         )
     finally:
         await extractor.close()
+
+
+@router.get("/community/{name}", summary="社区发现（产业链发现）")
+def get_community(
+    name: str,
+    depth: int = Query(3, ge=1, le=5, description="搜索深度")
+):
+    """
+    查询实体所在社区（产业链发现）
+
+    - **name**: 实体名称
+    - **depth**: 搜索深度（1-5）
+
+    返回：entity, community_size, members, density, relation_types
+    """
+    kg_service = KnowledgeGraphService()
+
+    try:
+        algo = GraphAlgorithms(kg_service)
+        result = algo.find_community(name, max_depth=depth)
+        return {
+            "success": True,
+            "data": result
+        }
+    finally:
+        kg_service.close()
+
+
+@router.get("/anomalies", summary="获取所有异常关联")
+def get_anomalies(db: Session = Depends(get_db)):
+    """获取所有异常关联检测"""
+    from app.services.anomaly_detector import AnomalyDetector
+    detector = AnomalyDetector(db)
+    anomalies = detector.detect_anomaly_relations()
+    return {"success": True, "data": anomalies, "total": len(anomalies)}
+
+
+@router.get("/anomalies/{stock_code}", summary="获取某股票的异常关联")
+def get_stock_anomalies(stock_code: str, db: Session = Depends(get_db)):
+    """获取某股票的异常关联检测"""
+    from app.services.anomaly_detector import AnomalyDetector
+    detector = AnomalyDetector(db)
+    anomalies = detector.detect_anomaly_relations(stock_code=stock_code)
+    return {"success": True, "data": anomalies, "total": len(anomalies), "stock_code": stock_code}
 
 
 @router.get("/stats", summary="获取图谱统计信息")

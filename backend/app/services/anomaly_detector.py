@@ -1,125 +1,218 @@
 """
-财报异常检测服务
+异常关联检测服务 - 检测潜在利益输送或异常关联
 """
-from typing import List, Dict
+from typing import List, Dict, Any, Optional
 from sqlalchemy.orm import Session
-from app.models.financial import Financial
+from sqlalchemy import func
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class AnomalyDetector:
-    """财报异常检测器"""
-    
+    """异常关联检测器"""
+
     def __init__(self, db: Session):
         self.db = db
-    
-    def detect(self, stock_code: str) -> Dict:
+
+    def detect_anomaly_relations(self, stock_code: Optional[str] = None) -> List[Dict[str, Any]]:
         """
-        检测财务数据异常
-        
-        检查项：
-        - ROE 突然大幅下降（>30%）
-        - 负债率突然飙升（>20%）
-        - 营收增长但利润下降
-        - 经营现金流连续为负
-        
+        检测潜在的利益输送或异常关联
+
         Args:
-            stock_code: 股票代码
-        
+            stock_code: 可选，过滤特定股票的异常
+
         Returns:
-            {
-                has_anomaly: bool,
-                items: [{type, description, severity}]
-            }
+            [{type, entities, risk_level, description}]
         """
-        items = []
-        
-        # 查询最近 4 期财报
-        financials = self.db.query(Financial).filter(
-            Financial.stock_code == stock_code
-        ).order_by(Financial.report_date.desc()).limit(4).all()
-        
-        if len(financials) < 2:
-            return {
-                'has_anomaly': False,
-                'items': [],
-                'message': '数据不足，至少需要 2 期财报'
-            }
-        
-        latest = financials[0]
-        previous = financials[1]
-        
-        # 1. 检测 ROE 大幅下降
-        if latest.roe and previous.roe and previous.roe > 0:
-            roe_decline_pct = (previous.roe - latest.roe) / previous.roe * 100
-            if roe_decline_pct > 30:
-                severity = 'high' if roe_decline_pct > 50 else 'medium'
-                items.append({
-                    'type': 'roe_decline',
-                    'description': f'ROE 从 {previous.roe:.2f}% 下降至 {latest.roe:.2f}%，降幅 {roe_decline_pct:.1f}%',
-                    'severity': severity,
-                    'details': {
-                        'previous': previous.roe,
-                        'current': latest.roe,
-                        'change_pct': round(roe_decline_pct, 2)
-                    }
-                })
-        
-        # 2. 检测负债率飙升
-        if latest.debt_ratio and previous.debt_ratio and previous.debt_ratio > 0:
-            debt_increase_pct = (latest.debt_ratio - previous.debt_ratio) / previous.debt_ratio * 100
-            if debt_increase_pct > 20:
-                severity = 'high' if debt_increase_pct > 40 else 'medium'
-                items.append({
-                    'type': 'debt_surge',
-                    'description': f'负债率从 {previous.debt_ratio:.2f}% 飙升至 {latest.debt_ratio:.2f}%，涨幅 {debt_increase_pct:.1f}%',
-                    'severity': severity,
-                    'details': {
-                        'previous': previous.debt_ratio,
-                        'current': latest.debt_ratio,
-                        'change_pct': round(debt_increase_pct, 2)
-                    }
-                })
-        
-        # 3. 检测营收增长但利润下降
-        if (latest.revenue_yoy and latest.revenue_yoy > 0 and 
-            latest.net_profit_yoy and latest.net_profit_yoy < 0):
-            severity = 'high' if abs(latest.net_profit_yoy) > 30 else 'medium'
-            items.append({
-                'type': 'profit_decline_with_revenue_growth',
-                'description': f'营收同比增长 {latest.revenue_yoy:.1f}%，但净利润同比下降 {abs(latest.net_profit_yoy):.1f}%',
-                'severity': severity,
-                'details': {
-                    'revenue_yoy': latest.revenue_yoy,
-                    'net_profit_yoy': latest.net_profit_yoy
-                }
-            })
-        
-        # 4. 检测经营现金流连续为负
-        negative_cash_flow_count = sum(
-            1 for fin in financials 
-            if fin.operating_cash_flow and fin.operating_cash_flow < 0
+        anomalies = []
+
+        # 1. 持股比例异常高的个人股东（>30% 且非创始人）
+        anomalies.extend(self._detect_high_concentration(stock_code))
+
+        # 2. 多个公司共享同一大股东
+        anomalies.extend(self._detect_shared_holders(stock_code))
+
+        # 3. 近期新增的政府监管关系
+        anomalies.extend(self._detect_regulatory_risk(stock_code))
+
+        # 4. 竞争对手之间有合作关系
+        anomalies.extend(self._detect_conflict_relations(stock_code))
+
+        # 按 risk_level 排序
+        risk_order = {"high": 0, "medium": 1, "low": 2}
+        anomalies.sort(key=lambda x: risk_order.get(x["risk_level"], 9))
+
+        return anomalies
+
+    def _detect_high_concentration(self, stock_code: Optional[str]) -> List[Dict[str, Any]]:
+        """查找持股比例 > 30% 的个人股东"""
+        from app.models.shareholder import Shareholder
+        from app.models.stock import Stock
+
+        query = (
+            self.db.query(Shareholder, Stock.name)
+            .join(Stock, Shareholder.stock_code == Stock.stock_code)
+            .filter(
+                Shareholder.holder_type == "个人",
+                Shareholder.hold_ratio > 30,
+            )
         )
-        
-        if negative_cash_flow_count >= 2:
-            severity = 'high' if negative_cash_flow_count >= 3 else 'medium'
-            items.append({
-                'type': 'negative_cash_flow',
-                'description': f'连续 {negative_cash_flow_count} 期经营现金流为负',
-                'severity': severity,
-                'details': {
-                    'consecutive_periods': negative_cash_flow_count,
-                    'latest_cash_flow': latest.operating_cash_flow
-                }
+        if stock_code:
+            query = query.filter(Shareholder.stock_code == stock_code)
+
+        results = query.all()
+
+        anomalies = []
+        for sh, stock_name in results:
+            anomalies.append({
+                "type": "high_concentration",
+                "entities": [
+                    {"name": sh.holder_name, "type": "person"},
+                    {"name": stock_name or sh.stock_code, "type": "company", "stock_code": sh.stock_code},
+                ],
+                "risk_level": "high" if sh.hold_ratio > 50 else "medium",
+                "description": f"{sh.holder_name} 持有 {stock_name or sh.stock_code} {sh.hold_ratio}% 股份，持股比例异常偏高",
             })
-        
-        return {
-            'has_anomaly': len(items) > 0,
-            'items': items,
-            'total_issues': len(items),
-            'high_severity_count': sum(1 for item in items if item['severity'] == 'high'),
-            'stock_code': stock_code,
-            'latest_report_date': str(latest.report_date)
-        }
+
+        return anomalies
+
+    def _detect_shared_holders(self, stock_code: Optional[str]) -> List[Dict[str, Any]]:
+        """查找多个公司共享同一大股东"""
+        from app.models.shareholder import Shareholder
+        from app.models.stock import Stock
+
+        # 找到出现在多只股票中的大股东（前5大且持股 > 5%）
+        subq = (
+            self.db.query(
+                Shareholder.holder_name,
+                func.count(func.distinct(Shareholder.stock_code)).label("company_count"),
+            )
+            .filter(Shareholder.rank <= 5, Shareholder.hold_ratio > 5)
+            .group_by(Shareholder.holder_name)
+            .having(func.count(func.distinct(Shareholder.stock_code)) >= 3)
+        )
+
+        if stock_code:
+            subq = subq.filter(Shareholder.stock_code == stock_code)
+
+        shared_holders = subq.all()
+
+        anomalies = []
+        for holder_name, company_count in shared_holders:
+            # 获取相关公司
+            companies_q = (
+                self.db.query(Shareholder.stock_code, Stock.name)
+                .join(Stock, Shareholder.stock_code == Stock.stock_code)
+                .filter(Shareholder.holder_name == holder_name, Shareholder.rank <= 5)
+                .distinct()
+                .limit(10)
+                .all()
+            )
+
+            entities = [{"name": holder_name, "type": "person"}]
+            entities.extend(
+                {"name": name or code, "type": "company", "stock_code": code}
+                for code, name in companies_q
+            )
+
+            risk = "high" if company_count >= 5 else "medium"
+            anomalies.append({
+                "type": "shared_holder",
+                "entities": entities,
+                "risk_level": risk,
+                "description": f"{holder_name} 同时是 {company_count} 家公司的大股东，存在潜在关联交易风险",
+            })
+
+        return anomalies
+
+    def _detect_regulatory_risk(self, stock_code: Optional[str]) -> List[Dict[str, Any]]:
+        """查找近期被证监会/央行等监管机构标记的公司"""
+        from app.models.news import News
+        from app.models.stock import Stock
+        from datetime import datetime, timedelta
+
+        regulatory_keywords = ["证监会", "银保监会", "央行", "处罚", "立案", "调查", "警示", "整改"]
+
+        three_months_ago = datetime.now() - timedelta(days=90)
+        query = (
+            self.db.query(News)
+            .filter(News.created_at >= three_months_ago)
+        )
+
+        # 通过标题关键词匹配监管新闻
+        regulatory_news = []
+        for news in query.all():
+            if any(kw in (news.title or "") for kw in regulatory_keywords):
+                if stock_code and news.stock_code != stock_code:
+                    continue
+                regulatory_news.append(news)
+
+        # 按 stock_code 聚合
+        from collections import defaultdict
+        code_map = defaultdict(list)
+        for n in regulatory_news:
+            if n.stock_code:
+                code_map[n.stock_code].append(n)
+
+        anomalies = []
+        for code, news_items in code_map.items():
+            stock = self.db.query(Stock).filter(Stock.stock_code == code).first()
+            name = stock.name if stock else code
+            anomalies.append({
+                "type": "regulatory_risk",
+                "entities": [
+                    {"name": name, "type": "company", "stock_code": code},
+                ],
+                "risk_level": "high" if len(news_items) >= 3 else "medium",
+                "description": f"{name} 近3个月有 {len(news_items)} 条监管相关新闻，存在合规风险",
+            })
+
+        return anomalies
+
+    def _detect_conflict_relations(self, stock_code: Optional[str]) -> List[Dict[str, Any]]:
+        """查找竞争对手之间有合作关系"""
+        try:
+            from app.services.knowledge_graph import KnowledgeGraphService
+
+            kg = KnowledgeGraphService()
+            try:
+                # 查找所有 competes_with 和 partner_of 关系
+                with kg.driver.session() as session:
+                    # 找竞争对手关系
+                    compete_query = "MATCH (a)-[:competes_with]->(b) RETURN a.name as a_name, b.name as b_name"
+                    compete_results = session.run(compete_query).data()
+
+                    # 找合作关系
+                    partner_query = "MATCH (a)-[:partner_of]->(b) RETURN a.name as a_name, b.name as b_name"
+                    partner_results = session.run(partner_query).data()
+
+                compete_pairs = {(r["a_name"], r["b_name"]) for r in compete_results}
+                partner_pairs = {(r["a_name"], r["b_name"]) for r in partner_results}
+
+                # 找交集：既是竞争对手又有合作关系
+                conflicts = compete_pairs & partner_pairs
+
+                anomalies = []
+                for a_name, b_name in conflicts:
+                    if stock_code:
+                        # 简单匹配：检查名称或代码是否相关
+                        if stock_code not in a_name and stock_code not in b_name:
+                            continue
+
+                    anomalies.append({
+                        "type": "conflict_relation",
+                        "entities": [
+                            {"name": a_name, "type": "company"},
+                            {"name": b_name, "type": "company"},
+                        ],
+                        "risk_level": "medium",
+                        "description": f"{a_name} 与 {b_name} 既是竞争对手又有合作关系，可能存在信息泄露风险",
+                    })
+
+                return anomalies
+            finally:
+                kg.close()
+        except Exception as e:
+            logger.warning(f"Neo4j 冲突关系检测失败（Neo4j 可能未启动）: {e}")
+            return []

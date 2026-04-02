@@ -1,7 +1,7 @@
 """
 数据统计 API
 """
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
@@ -14,6 +14,28 @@ import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
+
+
+@router.get("/daily-report")
+async def get_daily_report(
+    request: Request,
+    format: str = Query("json", regex="^(json|text|html)$", description="输出格式"),
+    db: Session = Depends(get_db)
+):
+    """
+    获取今日投资早报
+
+    - **format**: json / text / html
+    """
+    from app.services.daily_report import DailyReport
+    report = DailyReport(db)
+    
+    if format == "text":
+        return {"success": True, "format": "text", "data": report.format_text()}
+    elif format == "html":
+        return {"success": True, "format": "html", "data": report.format_html()}
+    else:
+        return {"success": True, "format": "json", "data": report.generate()}
 
 
 @router.get("/overview")

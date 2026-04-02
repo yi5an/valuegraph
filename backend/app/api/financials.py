@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.financial import FinancialResponse, FinancialDetail
 from app.services.financial_analysis import FinancialService
 from app.services.anomaly_detector import AnomalyDetector
+from app.services.dupont_analysis import DupontAnalysis
 from app.utils.rate_limiter import limiter
 from app.models.stock import Stock
 from app.models.financial import Financial
@@ -212,3 +213,27 @@ async def get_peer_comparison(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"同业对比失败: {str(e)}")
+
+
+@router.get("/{stock_code}/dupont", summary="杜邦分析")
+def get_dupont_analysis(
+    stock_code: str,
+    quarters: int = Query(default=4, ge=1, le=8, description="返回最近几个季度"),
+    db: Session = Depends(get_db)
+):
+    """
+    杜邦分析 - ROE 三因子拆解
+
+    ROE = 净利率 × 资产周转率 × 权益乘数
+
+    返回最近 N 个季度的杜邦分析数据，包含趋势分析。
+    """
+    try:
+        service = DupontAnalysis(db)
+        result = service.analyze(stock_code, quarters=quarters)
+        return {
+            "success": True,
+            "data": result
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"杜邦分析失败: {str(e)}")

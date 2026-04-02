@@ -94,6 +94,15 @@ class NewsScheduler:
             replace_existing=True
         )
         
+        # 每天 08:00 生成并推送每日早报
+        self.scheduler.add_job(
+            self._generate_daily_report,
+            trigger=CronTrigger(hour=8, minute=0),
+            id='daily_report',
+            name='生成并推送每日早报',
+            replace_existing=True
+        )
+        
         self.scheduler.start()
         logger.info("📰 新闻采集调度器已启动")
     
@@ -396,6 +405,25 @@ class NewsScheduler:
             logger.info(f"👥 股东数据同步完成: {result.get('status')}, new={result.get('new_rows', 0)}")
         except Exception as e:
             logger.error(f"股东数据同步失败: {e}")
+
+    async def _generate_daily_report(self):
+        """每天 08:00 生成并推送每日早报"""
+        logger.info("📰 开始生成每日投资早报...")
+        try:
+            from app.database import SessionLocal
+            from app.services.daily_report import DailyReport
+            from app.services.notification import TelegramNotifier
+
+            db = SessionLocal()
+            try:
+                report = DailyReport(db)
+                text = report.format_html()
+                await TelegramNotifier.send_telegram_message(text)
+                logger.info("📰 每日早报推送成功")
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"每日早报生成/推送失败: {e}")
 
     def shutdown(self):
         self.scheduler.shutdown()
