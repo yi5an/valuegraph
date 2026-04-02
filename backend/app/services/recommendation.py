@@ -18,6 +18,7 @@ class RecommendationService:
     
     def __init__(self, db: Session):
         self.db = db
+        self._dynamic_metadata = {}
     
     def recommend_stocks(
         self,
@@ -93,6 +94,16 @@ class RecommendationService:
                         if hasattr(strategy_instance, 'calc_safety_margin_from_pe'):
                             sm = strategy_instance.calc_safety_margin_from_pe(financial, pe)
                             item['safety_margin'] = sm
+            
+            # 应用动态评分（A股）
+            if market == "A" and results:
+                from app.services.dynamic_scoring import fetch_spot_for_stocks, apply_dynamic_scores
+                codes = [r.get("stock_code", "") for r in results]
+                spot_data = fetch_spot_for_stocks(codes)
+                results, dynamic_meta = apply_dynamic_scores(results, spot_data)
+                self._dynamic_metadata = dynamic_meta
+            else:
+                self._dynamic_metadata = {}
             
             logger.info(f"✅ [{strategy}策略] 推荐股票 {len(results)} 只")
             return results

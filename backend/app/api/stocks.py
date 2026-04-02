@@ -113,19 +113,39 @@ async def recommend_stocks(
         )
 
         # 构建响应 - 统一格式为 {"success": true, "data": {"recommendations": [...], "total": N}}
+        response_data = {
+            "recommendations": recommendations,
+            "total": len(recommendations),
+            "strategy": strategy,
+            "params": {
+                "min_roe": min_roe,
+                "max_debt_ratio": max_debt_ratio,
+                "min_safety_margin": min_safety_margin,
+                "min_grade": min_grade,
+            }
+        }
+        
+        # 添加动态评分元数据
+        if hasattr(service, '_dynamic_metadata') and service._dynamic_metadata:
+            response_data["meta"] = service._dynamic_metadata
+        
+        # 计算数据新鲜度（最新财报日期）
+        if recommendations and market == "A":
+            try:
+                from app.models.financial import Financial
+                latest_report = db.query(Financial.report_date).order_by(
+                    Financial.report_date.desc()
+                ).first()
+                if latest_report:
+                    if "meta" not in response_data:
+                        response_data["meta"] = {}
+                    response_data["meta"]["data_freshness"] = str(latest_report[0])
+            except Exception:
+                pass
+        
         return {
             "success": True,
-            "data": {
-                "recommendations": recommendations,
-                "total": len(recommendations),
-                "strategy": strategy,
-                "params": {
-                    "min_roe": min_roe,
-                    "max_debt_ratio": max_debt_ratio,
-                    "min_safety_margin": min_safety_margin,
-                    "min_grade": min_grade,
-                }
-            }
+            "data": response_data
         }
 
     except HTTPException:
