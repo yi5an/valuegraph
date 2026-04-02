@@ -1,5 +1,5 @@
 """
-Telegram 推送通知服务
+Telegram 推送通知服务 - 事件驱动，仅推送紧急新闻
 """
 import httpx
 import logging
@@ -11,8 +11,22 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 
+# 紧急关键词（命中任意一个即推送）
+URGENT_KEYWORDS = [
+    "暴跌", "跌停", "熔断", "崩盘", "黑天鹅",
+    "监管", "处罚", "立案", "调查", "退市", "ST",
+    "降息", "加息", "降准", "IPO", "注册制",
+    "重大利空", "业绩暴雷", "财务造假",
+    "减持", "清仓", "质押", "爆仓",
+    "封杀", "制裁", "禁令",
+]
+
+# 紧急事件类型
+URGENT_EVENT_TYPES = ["policy", "monetary_policy"]
+
+
 class TelegramNotifier:
-    """Telegram Bot 推送"""
+    """Telegram Bot 推送 - 仅紧急新闻"""
 
     @staticmethod
     async def send_telegram_message(text: str, parse_mode: str = "HTML") -> bool:
@@ -41,60 +55,96 @@ class TelegramNotifier:
             return False
 
     @staticmethod
-    async def push_important_news():
+    def _is_urgent(title: str, content: str, event_type: str = None) -> bool:
+        """判断新闻是否紧急"""
+        text = f"{title} {content or ''}"
+        # 政策/货币政策事件
+        if event_type in URGENT_EVENT_TYPES:
+            return True
+        # 关键词匹配
+        for kw in URGENT_KEYWORDS:
+            if kw in text:
+                return True
+        return False
+
+    @staticmethod
+    async def check_and_push(new_news_list: list):
         """
-        查询最近 1 小时负面新闻（关联有财务数据的持仓股），推送到 TG
+        事件驱动：在每次新闻采集后调用，检查新采集的新闻是否紧急，立即推送。
+        new_news_list: [{'title': ..., 'content': ..., 'source': ..., 'stock_code': ..., 'event_type': ...}, ...]
+        """
+        urgent = []
+        for item in new_news_list:
+            title = item.get("title", "")
+            content = item.get("content", "")
+            event_type = item.get("event_type")
+            if TelegramNotifier._is_urgent(title, content, event_type):
+                urgent.append(item)
+
+        if not urgent:
+            return False
+
+        lines = ["<b>🚨 紧急新闻</b>\n"]
+        for n in urgent[:5]:  # 最多5条，避免刷屏
+            stock_tag = f" | 📌 {n.get('stock_code', '')}" if n.get('stock_code') else ""
+            source_tag = f" ({n.get('source', '')})"
+            lines.append(f"• <b>{n['title']}</b>{source_tag}{stock_tag}")
+            if n.get("content"):
+                lines.append(f"  {n['content'][:120]}...")
+
+        text = "\n".join(lines)
+        await TelegramNotifier.send_telegram_message(text)
+        return True
+
+    @staticmethod
+    async def push_urgent_news() -> bool:
+        """
+        兜底：查询最近 10 分钟内是否有紧急新闻未推送（防漏）
+        由调度器每 10 分钟调用一次
         """
         from app.database import SessionLocal
         from app.models.news import News
-        from app.models.financial import Financial
-        from sqlalchemy import distinct
+        from sqlalchemy import or_
 
         token = settings.tg_bot_token
         chat_id = settings.tg_chat_id
         if not token or not chat_id:
-            return
+            return False
 
         db = SessionLocal()
         try:
-            # 获取有财务数据的股票代码集合
-            tracked_codes = {
-                code for (code,) in
-                db.query(distinct(Financial.stock_code)).all()
-            }
-            if not tracked_codes:
-                logger.info("无持仓股，跳过推送")
-                return
-
-            # 查询最近 1 小时、负面情感、关联持仓股的新闻
-            one_hour_ago = datetime.now() - timedelta(hours=1)
+            ten_min_ago = datetime.now() - timedelta(minutes=10)
             news_list = (
                 db.query(News)
-                .filter(
-                    News.sentiment == "负面",
-                    News.stock_code.isnot(None),
-                    News.stock_code.in_(tracked_codes),
-                    News.created_at >= one_hour_ago,
-                )
+                .filter(News.created_at >= ten_min_ago)
                 .order_by(News.created_at.desc())
-                .limit(10)
+                .limit(50)
                 .all()
             )
 
-            if not news_list:
-                return
-
-            lines = ["<b>⚠️ 重要负面新闻提醒</b>\n"]
+            urgent = []
             for n in news_list:
-                lines.append(
-                    f"• <b>{n.title}</b>\n"
-                    f"  摘要: {n.content[:100] if n.content else '无'}...\n"
-                    f"  股票: {n.stock_code} | 来源: {n.source}\n"
-                )
+                if TelegramNotifier._is_urgent(n.title, n.content, getattr(n, "event_type", None)):
+                    urgent.append({
+                        "title": n.title,
+                        "content": n.content,
+                        "source": n.source,
+                        "stock_code": n.stock_code,
+                    })
+
+            if not urgent:
+                return False
+
+            lines = ["<b>🚨 紧急新闻</b>\n"]
+            for n in urgent[:5]:
+                stock_tag = f" | 📌 {n.get('stock_code', '')}" if n.get("stock_code") else ""
+                lines.append(f"• <b>{n['title']}</b> ({n['source']}){stock_tag}")
 
             text = "\n".join(lines)
             await TelegramNotifier.send_telegram_message(text)
+            return True
         except Exception as e:
-            logger.error(f"推送重要新闻失败: {e}")
+            logger.error(f"紧急新闻推送失败: {e}")
+            return False
         finally:
             db.close()

@@ -13,12 +13,21 @@ class NewsScheduler:
     
     def start(self):
         """启动定时任务"""
-        # 每 10 分钟采集热点新闻
+        # 每 10 分钟采集热点新闻 + 紧急新闻检查
         self.scheduler.add_job(
             self._sync_hot_news,
             trigger=IntervalTrigger(minutes=10),
             id='sync_hot_news',
             name='同步热点新闻',
+            replace_existing=True
+        )
+        
+        # 每 10 分钟兜底检查紧急新闻（防漏）
+        self.scheduler.add_job(
+            self._push_urgent_news,
+            trigger=IntervalTrigger(minutes=10),
+            id='push_urgent_news',
+            name='紧急新闻兜底检查',
             replace_existing=True
         )
         
@@ -76,15 +85,6 @@ class NewsScheduler:
             replace_existing=True
         )
         
-        # 每 30 分钟检查并推送重要新闻到 TG
-        self.scheduler.add_job(
-            self._push_important_news,
-            trigger=IntervalTrigger(minutes=30),
-            id='push_important_news',
-            name='推送重要新闻到TG',
-            replace_existing=True
-        )
-        
         # 每天 02:00 增量同步财务数据（500只/次）
         self.scheduler.add_job(
             self._sync_financials,
@@ -100,15 +100,6 @@ class NewsScheduler:
             trigger=CronTrigger(day_of_week='sun', hour=3, minute=0),
             id='sync_shareholders',
             name='增量同步股东数据',
-            replace_existing=True
-        )
-        
-        # 每天 08:00 生成并推送每日早报
-        self.scheduler.add_job(
-            self._generate_daily_report,
-            trigger=CronTrigger(hour=8, minute=0),
-            id='daily_report',
-            name='生成并推送每日早报',
             replace_existing=True
         )
         
@@ -153,6 +144,10 @@ class NewsScheduler:
                 
                 db.commit()
                 logger.info(f"📰 热点新闻采集完成：新增 {new_count} 条，共 {len(news_list)} 条")
+                
+                # 事件驱动：新采集的新闻立即检查是否紧急
+                if new_count > 0:
+                    await self._check_new_news_urgent(news_list)
             finally:
                 db.close()
         except Exception as e:
@@ -401,13 +396,26 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"Twitter 监控采集失败: {e}")
 
-    async def _push_important_news(self):
-        """推送重要新闻到 Telegram"""
+    async def _push_urgent_news(self):
+        """事件驱动：检查并立即推送紧急新闻到 Telegram"""
         try:
             from app.services.notification import TelegramNotifier
-            await TelegramNotifier.push_important_news()
+            pushed = await TelegramNotifier.push_urgent_news()
+            if pushed:
+                logger.info("🚨 紧急新闻已推送")
         except Exception as e:
             logger.error(f"TG推送任务失败: {e}")
+
+    async def _check_new_news_urgent(self, news_list: list):
+        """事件驱动：对新采集的新闻立即检查紧急度并推送"""
+        try:
+            from app.services.notification import TelegramNotifier
+            new_items = [{"title": n.get("title", ""), "content": n.get("content", ""), 
+                         "source": n.get("source", ""), "stock_code": n.get("stock_code"),
+                         "event_type": n.get("event_type")} for n in news_list]
+            await TelegramNotifier.check_and_push(new_items)
+        except Exception as e:
+            logger.error(f"紧急新闻检查失败: {e}")
 
     async def _sync_financials(self):
         """每天增量同步财务数据"""
@@ -431,24 +439,7 @@ class NewsScheduler:
         except Exception as e:
             logger.error(f"股东数据同步失败: {e}")
 
-    async def _generate_daily_report(self):
-        """每天 08:00 生成并推送每日早报"""
-        logger.info("📰 开始生成每日投资早报...")
-        try:
-            from app.database import SessionLocal
-            from app.services.daily_report import DailyReport
-            from app.services.notification import TelegramNotifier
 
-            db = SessionLocal()
-            try:
-                report = DailyReport(db)
-                text = report.format_html()
-                await TelegramNotifier.send_telegram_message(text)
-                logger.info("📰 每日早报推送成功")
-            finally:
-                db.close()
-        except Exception as e:
-            logger.error(f"每日早报生成/推送失败: {e}")
 
     def shutdown(self):
         self.scheduler.shutdown()
