@@ -11,16 +11,20 @@ interface RelatedNewsItem extends NewsItem {
 }
 
 // 情感标签组件
-function SentimentTag({ sentiment }: { sentiment?: "positive" | "negative" | "neutral" }) {
-  if (!sentiment) return null;
+function SentimentTag({ sentiment }: { sentiment?: any }) {
+  // 支持字符串 "positive" 或对象 {sentiment: "positive"}
+  const value = typeof sentiment === "string" ? sentiment : sentiment?.sentiment;
+  if (!value) return null;
   
-  const config = {
+  const config: Record<string, { icon: any; label: string; className: string }> = {
     positive: { icon: TrendingUp, label: "正面", className: "bg-green-500/20 text-green-400" },
     negative: { icon: TrendingDown, label: "负面", className: "bg-red-500/20 text-red-400" },
     neutral: { icon: Minus, label: "中性", className: "bg-slate-500/20 text-slate-400" }
   };
   
-  const { icon: Icon, label, className } = config[sentiment];
+  const cfg = config[value];
+  if (!cfg) return null;
+  const { icon: Icon, label, className } = cfg;
   
   return (
     <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${className}`}>
