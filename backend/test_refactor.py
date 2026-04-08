@@ -91,7 +91,8 @@ def test_recommendation_service():
     print("测试 3: RecommendationService 策略调度")
     print("=" * 50)
     
-    strategies = RecommendationService.get_available_strategies()
+    # 使用静态方法
+    strategies = RecommendationService.list_strategies()
     print(f"✓ 可用策略: {list(strategies.keys())}")
     
     assert 'value' in strategies, "应该有 value 策略"

@@ -17,16 +17,9 @@ from app.services.strategies.base import StrategyBase
 class ValueInvestingStrategy(StrategyBase):
     """价值投资策略"""
 
-    def __init__(
-        self,
-        min_roe: float = 15.0,
-        max_debt_ratio: float = 60.0,
-        min_gross_margin: float = 20.0,
-        min_cash_flow: float = 0,
-        min_net_profit: float = 0,
-        bond_yield: float = 3.0,  # 10年期国债收益率（%）
-    ):
-        super().__init__()
+    def __init__(self, db=None, min_roe: float = 15.0, max_debt_ratio: float = 60.0, min_gross_margin: float = 20.0,
+                 min_cash_flow: float = 0.0, min_net_profit: float = 0.0, bond_yield: float = 3.0):
+        super().__init__(db)
         self.name = "value"
         self.description = "价值投资策略（Graham + 巴菲特理念）"
 

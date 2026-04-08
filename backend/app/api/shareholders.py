@@ -144,8 +144,8 @@ async def get_institutional_holders(
         crawler = ShareholderCrawler(db_path=DB_PATH)
         data = crawler.fetch_institutional_holders(stock_code)
         
-        # 如果爬虫失败，使用 AkShare 基金持仓作为备用
-        if not data:
+        # 如果爬虫失败或数据无效，使用 AkShare 基金持仓作为备用
+        if not data or (data and not data[0].get("institution_name")):
             fund_data = AkShareCollector.get_institutional_holders(stock_code)
             # 转换数据格式
             data = [

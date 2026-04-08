@@ -45,7 +45,8 @@ class AnalysisResult:
 class StrategyBase(ABC):
     """投资策略抽象基类"""
 
-    def __init__(self):
+    def __init__(self, db=None):
+        self.db = db
         self.name: str = "base"
         self.description: str = "基础策略"
 

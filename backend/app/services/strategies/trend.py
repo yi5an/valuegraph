@@ -18,8 +18,8 @@ from app.services.strategies.base import StrategyBase
 class TrendInvestingStrategy(StrategyBase):
     """趋势投资策略（预留）"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, db=None):
+        super().__init__(db)
         self.name = "trend"
         self.description = "趋势投资策略（预留，待实现）"
 
