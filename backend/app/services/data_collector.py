@@ -136,17 +136,9 @@ class AkShareCollector:
         sf = AkShareCollector._safe_float
         top_holders = []
         report_date = datetime.now().strftime('%Y-%m-%d')
-        stock_name = ""
+        stock_name = stock_code  # 默认使用代码作为名称
 
         try:
-            # 先获取股票名称
-            try:
-                df_name = ak.stock_zh_a_spot_em()
-                stock_info = df_name[df_name['代码'] == stock_code]
-                if not stock_info.empty:
-                    stock_name = str(stock_info.iloc[0]['名称'])
-            except:
-                pass
 
             # 方案1: 使用 stock_main_stock_holder
             try:

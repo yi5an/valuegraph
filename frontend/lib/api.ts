@@ -257,7 +257,7 @@ export async function getStocks(
     }
     
     const res = await fetch(`/api/stocks?${params.toString()}`, {
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
     
     if (!res.ok) {
@@ -290,7 +290,7 @@ export async function getStocks(
 export async function getFinancials(code: string): Promise<FinancialRecord> {
   try {
     const res = await fetch(`/api/financials/${code}`, {
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
     
     if (!res.ok) {
@@ -318,7 +318,7 @@ export async function getFinancials(code: string): Promise<FinancialRecord> {
 export async function getShareholders(code: string): Promise<ShareholderRecord> {
   try {
     const res = await fetch(`/api/shareholders/${code}`, {
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
     
     if (!res.ok) {
@@ -346,7 +346,7 @@ export async function getShareholders(code: string): Promise<ShareholderRecord> 
 export async function getStockNews(code: string): Promise<NewsItem[] | null> {
   try {
     const res = await fetch(`/api/news/stock/${code}`, {
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
     
     if (!res.ok) {
@@ -367,7 +367,7 @@ export async function getStockNews(code: string): Promise<NewsItem[] | null> {
 export async function getHotNews(): Promise<NewsItem[] | null> {
   try {
     const res = await fetch('/api/news/hot', {
-      next: { revalidate: 60 }
+      cache: "no-store"
     });
     
     if (!res.ok) {
