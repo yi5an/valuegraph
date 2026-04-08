@@ -7,6 +7,7 @@ from app.database import get_db
 from app.schemas.shareholder import ShareholderResponse, ShareholderDetail, TopShareholder, InstitutionalHolder as InstHolderSchema
 from app.models.shareholder import Shareholder as SHModel, InstitutionalHolder as InstHolderModel
 from app.services.shareholder_crawler import ShareholderCrawler
+from app.services.data_collector import AkShareCollector
 from app.utils.cache import cache
 from app.utils.rate_limiter import limiter
 from typing import Optional
@@ -80,11 +81,18 @@ async def get_shareholders(
             cache.set(cache_key, data)
             shareholder_detail = ShareholderDetail(**data)
         else:
-            return ShareholderResponse(
-                success=False,
-                data=None,
-                message="暂无股东数据，请通过 /api/shareholders/sync 同步"
-            )
+            # 数据库没有数据，从 AkShare 实时获取
+            data = AkShareCollector.get_shareholders(stock_code)
+            
+            if not data.get('top_10_shareholders'):
+                return ShareholderResponse(
+                    success=False,
+                    data=None,
+                    message="暂无股东数据"
+                )
+            
+            cache.set(cache_key, data)
+            shareholder_detail = ShareholderDetail(**data)
 
         return ShareholderResponse(success=True, data=shareholder_detail)
     except Exception as e:
@@ -135,12 +143,40 @@ async def get_institutional_holders(
         # 实时从东财 F10 抓取
         crawler = ShareholderCrawler(db_path=DB_PATH)
         data = crawler.fetch_institutional_holders(stock_code)
+        
+        # 如果爬虫失败，使用 AkShare 基金持仓作为备用
+        if not data:
+            fund_data = AkShareCollector.get_institutional_holders(stock_code)
+            # 转换数据格式
+            data = [
+                {
+                    "institution_name": item.get("fund_name", ""),
+                    "institution_type": "基金",
+                    "hold_amount": item.get("hold_amount"),
+                    "hold_ratio": item.get("hold_ratio"),
+                    "change_ratio": None,
+                    "report_date": item.get("report_date"),
+                }
+                for item in fund_data
+            ]
 
         # 存入数据库
         for item in data:
+            # 转换 report_date 为 date 对象
+            report_date_str = item.get("report_date") or "2024-12-31"
+            try:
+                from datetime import datetime
+                if isinstance(report_date_str, str):
+                    report_date = datetime.strptime(report_date_str, "%Y-%m-%d").date()
+                else:
+                    report_date = report_date_str
+            except:
+                from datetime import date
+                report_date = date(2024, 12, 31)
+            
             record = InstHolderModel(
                 stock_code=stock_code,
-                report_date=item.get("report_date") or "2024-12-31",
+                report_date=report_date,
                 institution_name=item["institution_name"],
                 institution_type=item.get("institution_type"),
                 hold_amount=item.get("hold_amount"),

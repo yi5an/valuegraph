@@ -52,3 +52,4 @@ class ShareholderResponse(BaseModel):
     """股东响应"""
     success: bool = Field(..., description="请求是否成功")
     data: Optional[ShareholderDetail] = Field(None, description="股东数据")
+    message: Optional[str] = Field(None, description="消息")

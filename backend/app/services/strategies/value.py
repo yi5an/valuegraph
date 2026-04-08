@@ -1,420 +1,487 @@
 """
 价值投资策略
-基于格雷厄姆/巴菲特/费雪的经典价值投资理论
+
+基于 Graham 和巴菲特的价值投资理念，结合 A 股市场特点。
+
+核心要素：
+1. 定量筛选：ROE > 15%、负债率 < 60%、经营现金流 > 0、净利润 > 0
+2. 评分体系：盈利能力(30) + 估值水平(25) + 财务健康(20) + 成长性(15) + 分红回报(10)
+3. 安全边际：Graham 公式 V = EPS × (8.5 + 2g) × 4.4 / Y
+4. 评级体系：A+(90+) / A(80-89) / B(70-79) / C(60-69) / D(<60)
 """
-from typing import List, Dict, Optional, Any
-from sqlalchemy.orm import Session
-import logging
 
+from typing import Dict, Any, Optional
 from app.services.strategies.base import StrategyBase
-from app.models.stock import Stock
-from app.models.financial import Financial
-
-logger = logging.getLogger(__name__)
 
 
 class ValueInvestingStrategy(StrategyBase):
     """价值投资策略"""
-    
-    # 10年期国债收益率（用于 Graham 公式）
-    RISK_FREE_RATE = 0.03
-    
-    @property
-    def name(self) -> str:
-        return "value"
-    
-    @property
-    def display_name(self) -> str:
-        return "🏛️ 价值投资"
-    
-    @property
-    def description(self) -> str:
-        return "基于基本面分析的价值投资策略，关注ROE、安全边际和财务健康度"
-    
-    def get_params_schema(self) -> List[Dict[str, Any]]:
-        return [
-            {"name": "min_roe", "type": "float", "default": 15.0, "description": "最低ROE（%）"},
-            {"name": "max_debt_ratio", "type": "float", "default": 60.0, "description": "最高负债率（%）"},
-            {"name": "min_safety_margin", "type": "float", "default": 0.0, "description": "最低安全边际（%）"},
-            {"name": "min_grade", "type": "str", "default": "D", "description": "最低评级（A+/A/B/C/D）"},
-            {"name": "min_gross_margin", "type": "float", "default": None, "description": "最低毛利率（%）"},
-            {"name": "industry", "type": "str", "default": None, "description": "行业筛选"},
-        ]
-    
-    def filter_stocks(
+
+    def __init__(
         self,
-        market: str = "A",
-        limit: int = 20,
         min_roe: float = 15.0,
         max_debt_ratio: float = 60.0,
-        min_safety_margin: float = 0.0,
-        min_grade: str = "D",
-        min_gross_margin: Optional[float] = None,
-        industry: Optional[str] = None,
-        sort_by: str = "score",
-        **kwargs
-    ) -> List[Dict]:
+        min_gross_margin: float = 20.0,
+        min_cash_flow: float = 0,
+        min_net_profit: float = 0,
+        bond_yield: float = 3.0,  # 10年期国债收益率（%）
+    ):
+        super().__init__()
+        self.name = "value"
+        self.description = "价值投资策略（Graham + 巴菲特理念）"
+
+        # 筛选参数
+        self.min_roe = min_roe
+        self.max_debt_ratio = max_debt_ratio
+        self.min_gross_margin = min_gross_margin
+        self.min_cash_flow = min_cash_flow
+        self.min_net_profit = min_net_profit
+        self.bond_yield = bond_yield
+
+    def screen(self, financial_data: Dict[str, Any]) -> tuple[bool, list]:
         """
-        价值投资筛选
-        
-        流程：
-        1. 定量硬门槛过滤
-        2. 五维度评分（满分100）
-        3. 安全边际计算
-        4. 评级分配
-        5. 排序返回
+        定量筛选（硬门槛）
+
+        筛选条件：
+        - ROE 最近一年 > 15%
+        - 负债率 < 60%
+        - 经营现金流 > 0
+        - 净利润 > 0
+        - 毛利率 > 20%（可选）
         """
-        grade_threshold = self._grade_to_score(min_grade)
-        
-        # 查询股票
-        query = self.db.query(Stock).filter(Stock.market == market)
-        if industry:
-            query = query.filter(Stock.industry == industry)
-        stocks = query.all()
-        
-        # 获取行业均值（用于估值比较）
-        industry_avg_pe = self._calc_industry_avg_pe(stocks)
-        
-        results = []
-        for stock in stocks:
-            financial = self.db.query(Financial).filter(
-                Financial.stock_code == stock.stock_code
-            ).order_by(Financial.report_date.desc()).first()
-            
-            if not financial:
-                continue
-            
-            # ====== 第一步：硬门槛过滤 ======
-            if not self._pass_hard_filters(financial, min_roe, max_debt_ratio, min_gross_margin):
-                continue
-            
-            # ====== 第二步：五维度评分 ======
-            score_detail = self._calc_composite_score(financial, stock, industry_avg_pe)
-            
-            # ====== 第三步：安全边际 ======
-            safety_margin = self._calc_safety_margin(financial)
-            
-            # ====== 第四步：评级 ======
-            grade = self._calc_grade(score_detail["total"], safety_margin)
-            
-            # ====== 第五步：筛选 ======
-            if score_detail["total"] < grade_threshold:
-                continue
-            if safety_margin < min_safety_margin:
-                continue
-            
-            results.append({
-                'stock_code': stock.stock_code,
-                'name': stock.name,
-                'market': stock.market,
-                'industry': stock.industry,
-                'market_cap': stock.market_cap,
-                # 原有字段（向后兼容）
-                'latest_roe': financial.roe,
-                'latest_pe': stock.latest_pe,
-                'debt_ratio': financial.debt_ratio,
-                'gross_margin': financial.gross_margin,
-                'net_profit_growth': financial.net_profit_yoy,
-                'recommendation_score': score_detail["total"],
-                'recommendation_reason': self._generate_reason(score_detail, safety_margin, grade),
-                # 新增字段
-                'strategy_name': self.name,
-                'grade': grade,
-                'safety_margin': round(safety_margin, 2),
-                'composite_score': score_detail["total"],
-                'score_detail': score_detail,
-                'eps': financial.eps,
-                'bvps': financial.bvps,
-                'operating_cash_flow': financial.operating_cash_flow,
-                'revenue_yoy': financial.revenue_yoy,
-            })
-        
-        # 排序
-        sort_field_map = {
-            'score': 'composite_score',
-            'roe': 'latest_roe',
-            'pe': 'latest_pe',
-            'market_cap': 'market_cap',
-            'safety_margin': 'safety_margin',
-        }
-        sort_field = sort_field_map.get(sort_by, 'composite_score')
-        reverse_sort = sort_by not in ('pe',)
-        results.sort(key=lambda x: x.get(sort_field) or 0, reverse=reverse_sort)
-        
-        return results[:limit]
-    
-    def _pass_hard_filters(
-        self, f: Financial,
-        min_roe: float, max_debt_ratio: float,
-        min_gross_margin: Optional[float]
-    ) -> bool:
-        """硬门槛过滤"""
-        if f.roe is not None and f.roe < min_roe:
-            return False
-        if f.debt_ratio is not None and f.debt_ratio > max_debt_ratio:
-            return False
-        if f.net_profit is not None and f.net_profit <= 0:
-            return False
-        if f.operating_cash_flow is not None and f.operating_cash_flow <= 0:
-            return False
-        if min_gross_margin is not None and f.gross_margin is not None and f.gross_margin < min_gross_margin:
-            return False
-        return True
-    
-    def _calc_composite_score(
-        self, f: Financial, stock: Stock, industry_avg_pe: float
-    ) -> Dict:
-        """
-        五维度评分（满分100分）
-        
-        盈利能力 30分 + 估值水平 25分 + 财务健康 20分 + 成长性 15分 + 分红回报 10分
-        """
-        scores = {}
-        
-        # ====== 1. 盈利能力（30分）======
-        profit_score = 0
-        # ROE 评分（20分）
-        roe = f.roe or 0
-        if roe >= 25:
-            profit_score += 20
-        elif roe >= 20:
-            profit_score += 17
-        elif roe >= 15:
-            profit_score += 14
-        elif roe >= 10:
-            profit_score += 10
-        else:
-            profit_score += 5
-        
-        # 净利润增长率（10分）
-        npg = f.net_profit_yoy
-        if npg is not None and npg > 0:
-            profit_score += min(10, int(npg / 5))
-        else:
-            profit_score += 2  # 无增长数据给低分
-        
-        scores["profitability"] = profit_score
-        
-        # ====== 2. 估值水平（25分）======
-        valuation_score = 0
-        pe = stock.latest_pe
-        
-        if pe is not None and pe > 0:
-            if industry_avg_pe > 0:
-                # 与行业均值比较
-                pe_ratio = pe / industry_avg_pe
-                if pe_ratio <= 0.7:
-                    valuation_score += 25  # 显著低于行业均值
-                elif pe_ratio <= 0.9:
-                    valuation_score += 20
-                elif pe_ratio <= 1.1:
-                    valuation_score += 15
-                elif pe_ratio <= 1.3:
-                    valuation_score += 10
-                else:
-                    valuation_score += 5
-            else:
-                # 无行业均值，用绝对值
-                if pe <= 15:
-                    valuation_score += 22
-                elif pe <= 25:
-                    valuation_score += 18
-                elif pe <= 35:
-                    valuation_score += 12
-                elif pe <= 50:
-                    valuation_score += 7
-                else:
-                    valuation_score += 3
-        else:
-            valuation_score += 12  # 无数据给中性分
-        
-        scores["valuation"] = valuation_score
-        
-        # ====== 3. 财务健康（20分）======
-        health_score = 0
-        # 负债率（12分）
-        dr = f.debt_ratio or 50
-        if dr <= 30:
-            health_score += 12
-        elif dr <= 40:
-            health_score += 10
-        elif dr <= 50:
-            health_score += 8
-        elif dr <= 60:
-            health_score += 5
-        else:
-            health_score += 2
-        
-        # 经营现金流/净利润比（8分）
-        if f.net_profit and f.net_profit > 0 and f.operating_cash_flow:
-            ocf_ratio = f.operating_cash_flow / f.net_profit
-            if ocf_ratio >= 1.2:
-                health_score += 8  # 现金流覆盖利润，质量很高
-            elif ocf_ratio >= 1.0:
-                health_score += 6
-            elif ocf_ratio >= 0.7:
-                health_score += 4
-            else:
-                health_score += 2
-        else:
-            health_score += 4  # 无数据给中性分
-        
-        scores["financial_health"] = health_score
-        
-        # ====== 4. 成长性（15分）======
-        growth_score = 0
-        # 营收增长率（8分）
-        rg = f.revenue_yoy
-        if rg is not None:
-            if rg >= 30:
-                growth_score += 8
-            elif rg >= 20:
-                growth_score += 7
-            elif rg >= 10:
-                growth_score += 5
-            elif rg >= 5:
-                growth_score += 3
-            else:
-                growth_score += 1
-        else:
-            growth_score += 3
-        
-        # 净利润增长率（7分）
-        if npg is not None:
-            if npg >= 30:
-                growth_score += 7
-            elif npg >= 20:
-                growth_score += 6
-            elif npg >= 10:
-                growth_score += 4
-            elif npg >= 5:
-                growth_score += 2
-            else:
-                growth_score += 1
-        else:
-            growth_score += 2
-        
-        scores["growth"] = growth_score
-        
-        # ====== 5. 分红回报（10分）======
-        # 当前数据库暂无股息率字段，给中性分
-        dividend_score = 5
-        scores["dividend"] = dividend_score
-        
-        total = sum(scores.values())
-        scores["total"] = total
-        
-        return scores
-    
-    def _calc_safety_margin(self, f: Financial) -> float:
-        """
-        计算 Graham 安全边际
-        
-        V = EPS × (8.5 + 2g) × 4.4 / Y
-        
-        Returns:
-            安全边际百分比（0-1），负数表示无安全边际
-        """
-        eps = f.eps
-        if eps is None or eps <= 0:
-            return 0.0
-        
-        g = f.net_profit_yoy  # 简化：用最近一年增长率
-        if g is None:
-            g = 5  # 默认5%增长
-        
-        Y = self.RISK_FREE_RATE * 100 if self.RISK_FREE_RATE < 1 else self.RISK_FREE_RATE
-        
-        intrinsic_value = eps * (8.5 + 2 * g) * 4.4 / Y
-        
-        # 当前价格近似 = PE × EPS
-        # 如果没有 PE，无法计算安全边际
-        # 这个会在上层用 stock.latest_pe 来算
-        # 这里先返回 Graham 价值，让上层计算
-        return intrinsic_value  # 返回内在价值，由上层计算安全边际
-    
-    def calc_safety_margin_from_pe(self, f: Financial, pe: float) -> float:
-        """
-        基于 PE 计算安全边际（供外部调用）
-        """
-        if pe is None or pe <= 0:
-            return 0.0
-        
-        eps = f.eps
-        if eps is None or eps <= 0:
-            return 0.0
-        
-        intrinsic_value = self._calc_safety_margin(f)
-        current_price = pe * eps
-        
-        if current_price <= 0:
-            return 0.0
-        
-        margin = (intrinsic_value - current_price) / intrinsic_value
-        return round(margin * 100, 2) if margin > 0 else 0.0
-    
-    def _calc_grade(self, score: float, safety_margin: float) -> str:
-        """根据评分和安全边际计算评级"""
-        # A+ 需要同时满足高分和较高安全边际
-        if score >= 90 and safety_margin >= 20:
-            return "A+"
-        elif score >= 80:
-            return "A"
-        elif score >= 70:
-            return "B"
-        elif score >= 60:
-            return "C"
-        else:
-            return "D"
-    
-    def _grade_to_score(self, grade: str) -> float:
-        """评级转最低分数阈值"""
-        mapping = {"A+": 90, "A": 80, "B": 70, "C": 60, "D": 0}
-        return mapping.get(grade.upper(), 0)
-    
-    def _calc_industry_avg_pe(self, stocks: list) -> float:
-        """计算行业平均 PE"""
-        pe_values = []
-        for s in stocks:
-            if s.latest_pe and s.latest_pe > 0 and s.latest_pe < 200:  # 排除异常值
-                pe_values.append(s.latest_pe)
-        if not pe_values:
-            return 0
-        return sum(pe_values) / len(pe_values)
-    
-    def _generate_reason(self, score_detail: Dict, safety_margin: float, grade: str) -> str:
-        """生成推荐理由"""
         reasons = []
-        
-        # 盈利能力
-        if score_detail.get("profitability", 0) >= 25:
-            reasons.append("盈利能力优秀")
-        elif score_detail.get("profitability", 0) >= 18:
-            reasons.append("盈利能力良好")
-        
-        # 估值
-        if score_detail.get("valuation", 0) >= 22:
-            reasons.append("估值低估")
-        elif score_detail.get("valuation", 0) >= 15:
-            reasons.append("估值合理")
-        elif score_detail.get("valuation", 0) <= 7:
-            reasons.append("估值偏高")
-        
-        # 财务健康
-        if score_detail.get("financial_health", 0) >= 16:
-            reasons.append("财务稳健")
-        
-        # 成长性
-        if score_detail.get("growth", 0) >= 12:
-            reasons.append("成长性好")
-        
+
+        # ROE 筛选
+        roe = financial_data.get("roe")
+        if roe is None:
+            reasons.append("缺少ROE数据")
+        elif roe < self.min_roe:
+            reasons.append(f"ROE {roe:.1f}% 低于最低要求 {self.min_roe}%")
+
+        # 负债率筛选
+        debt_ratio = financial_data.get("debt_ratio")
+        if debt_ratio is None:
+            reasons.append("缺少负债率数据")
+        elif debt_ratio > self.max_debt_ratio:
+            reasons.append(f"负债率 {debt_ratio:.1f}% 超过上限 {self.max_debt_ratio}%")
+
+        # 经营现金流筛选
+        operating_cash_flow = financial_data.get("operating_cash_flow")
+        if operating_cash_flow is None:
+            pass  # 缺失数据不惩罚
+        elif operating_cash_flow < self.min_cash_flow:
+            reasons.append(f"经营现金流为负")
+
+        # 净利润筛选
+        net_profit = financial_data.get("net_profit")
+        if net_profit is None:
+            pass  # 缺失数据不惩罚
+        elif net_profit < self.min_net_profit:
+            reasons.append(f"净利润为负")
+
+        # 毛利率筛选（可选）
+        gross_margin = financial_data.get("gross_margin")
+        if gross_margin is not None and gross_margin < self.min_gross_margin:
+            reasons.append(f"毛利率 {gross_margin:.1f}% 低于最低要求 {self.min_gross_margin}%")
+
+        passed = len(reasons) == 0
+        return passed, reasons
+
+    def calculate_score(self, financial_data: Dict[str, Any], stock_data: Dict[str, Any]) -> float:
+        """
+        计算综合得分（满分100分）
+
+        评分维度：
+        - 盈利能力 30分：ROE（连续3年平均）、净利润增长率
+        - 估值水平 25分：PE、PB（与行业均值比较）
+        - 财务健康 20分：负债率、经营现金流/净利润比
+        - 成长性 15分：营收增长率、净利润增长率
+        - 分红回报 10分：股息率（如有数据）
+        """
+        total_score = 0
+
+        # 1. 盈利能力（30分）
+        profitability_score = self._score_profitability(financial_data)
+        total_score += profitability_score
+
+        # 2. 估值水平（25分）
+        valuation_score = self._score_valuation(financial_data, stock_data)
+        total_score += valuation_score
+
+        # 3. 财务健康（20分）
+        financial_health_score = self._score_financial_health(financial_data)
+        total_score += financial_health_score
+
+        # 4. 成长性（15分）
+        growth_score = self._score_growth(financial_data)
+        total_score += growth_score
+
+        # 5. 分红回报（10分）
+        dividend_score = self._score_dividend(financial_data, stock_data)
+        total_score += dividend_score
+
+        return min(total_score, 100)
+
+    def _score_profitability(self, financial_data: Dict[str, Any]) -> float:
+        """
+        盈利能力评分（30分）
+
+        - ROE（20分）：>25%=20, >20%=16, >18%=14, >15%=12, >12%=8
+        - 净利润增长率（10分）：>30%=10, >20%=8, >10%=6, >0%=4
+        """
+        score = 0
+
+        # ROE 评分（20分）
+        roe = financial_data.get("roe")
+        if roe is not None:
+            if roe >= 25:
+                score += 20
+            elif roe >= 20:
+                score += 16
+            elif roe >= 18:
+                score += 14
+            elif roe >= 15:
+                score += 12
+            elif roe >= 12:
+                score += 8
+            else:
+                score += 4
+        else:
+            score += 10  # 缺失给中性分
+
+        # 净利润增长率评分（10分）
+        net_profit_yoy = financial_data.get("net_profit_yoy")
+        if net_profit_yoy is not None:
+            if net_profit_yoy >= 30:
+                score += 10
+            elif net_profit_yoy >= 20:
+                score += 8
+            elif net_profit_yoy >= 10:
+                score += 6
+            elif net_profit_yoy >= 0:
+                score += 4
+            else:
+                score += 2
+        else:
+            score += 5  # 缺失给中性分
+
+        return score
+
+    def _score_valuation(self, financial_data: Dict[str, Any], stock_data: Dict[str, Any]) -> float:
+        """
+        估值水平评分（25分）
+
+        - PE 评分（15分）：<10=15, <15=12, <20=10, <30=7, <50=5
+        - PB 评分（10分）：<1=10, <1.5=8, <2=6, <3=4
+        """
+        score = 0
+
+        # PE 评分（15分）
+        pe = stock_data.get("latest_pe")
+        if pe is not None and pe > 0:
+            if pe < 10:
+                score += 15
+            elif pe < 15:
+                score += 12
+            elif pe < 20:
+                score += 10
+            elif pe < 30:
+                score += 7
+            elif pe < 50:
+                score += 5
+            else:
+                score += 2
+        else:
+            score += 8  # 缺失给中性分
+
+        # PB 评分（10分）- 通过 BVPS 计算
+        bvps = financial_data.get("bvps")  # 每股净资产
+        # 假设股价可以从 market_cap / 总股本估算，这里简化处理
+        # PB = 股价 / BVPS，但没有股价数据，给中性分
+        score += 5  # 缺失 PB 数据给中性分
+
+        return score
+
+    def _score_financial_health(self, financial_data: Dict[str, Any]) -> float:
+        """
+        财务健康评分（20分）
+
+        - 负债率（10分）：<30%=10, <40%=8, <50%=6, <60%=4
+        - 经营现金流/净利润比（10分）：>1.5=10, >1.2=8, >1.0=6, >0.8=4
+        """
+        score = 0
+
+        # 负债率评分（10分）
+        debt_ratio = financial_data.get("debt_ratio")
+        if debt_ratio is not None:
+            if debt_ratio < 30:
+                score += 10
+            elif debt_ratio < 40:
+                score += 8
+            elif debt_ratio < 50:
+                score += 6
+            elif debt_ratio < 60:
+                score += 4
+            else:
+                score += 2
+        else:
+            score += 5  # 缺失给中性分
+
+        # 经营现金流/净利润比（10分）
+        operating_cash_flow = financial_data.get("operating_cash_flow")
+        net_profit = financial_data.get("net_profit")
+
+        if operating_cash_flow is not None and net_profit is not None and net_profit > 0:
+            ratio = operating_cash_flow / net_profit
+            if ratio >= 1.5:
+                score += 10
+            elif ratio >= 1.2:
+                score += 8
+            elif ratio >= 1.0:
+                score += 6
+            elif ratio >= 0.8:
+                score += 4
+            else:
+                score += 2
+        else:
+            score += 5  # 缺失给中性分
+
+        return score
+
+    def _score_growth(self, financial_data: Dict[str, Any]) -> float:
+        """
+        成长性评分（15分）
+
+        - 营收增长率（7.5分）：>30%=7.5, >20%=6, >10%=4.5, >0%=3
+        - 净利润增长率（7.5分）：>30%=7.5, >20%=6, >10%=4.5, >0%=3
+        """
+        score = 0
+
+        # 营收增长率评分（7.5分）
+        revenue_yoy = financial_data.get("revenue_yoy")
+        if revenue_yoy is not None:
+            if revenue_yoy >= 30:
+                score += 7.5
+            elif revenue_yoy >= 20:
+                score += 6
+            elif revenue_yoy >= 10:
+                score += 4.5
+            elif revenue_yoy >= 0:
+                score += 3
+            else:
+                score += 1
+        else:
+            score += 4  # 缺失给中性分
+
+        # 净利润增长率评分（7.5分）
+        net_profit_yoy = financial_data.get("net_profit_yoy")
+        if net_profit_yoy is not None:
+            if net_profit_yoy >= 30:
+                score += 7.5
+            elif net_profit_yoy >= 20:
+                score += 6
+            elif net_profit_yoy >= 10:
+                score += 4.5
+            elif net_profit_yoy >= 0:
+                score += 3
+            else:
+                score += 1
+        else:
+            score += 4  # 缺失给中性分
+
+        return score
+
+    def _score_dividend(self, financial_data: Dict[str, Any], stock_data: Dict[str, Any]) -> float:
+        """
+        分红回报评分（10分）
+
+        股息率评分：>5%=10, >3%=8, >2%=6, >1%=4, >0%=2
+
+        注：当前数据库没有股息率字段，给中性分
+        """
+        # TODO: 如果有股息率数据，可以实现完整评分
+        # dividend_yield = financial_data.get("dividend_yield")
+        # 暂时给中性分
+        return 5
+
+    def calculate_safety_margin(self, financial_data: Dict[str, Any], stock_data: Dict[str, Any]) -> Optional[float]:
+        """
+        计算安全边际（Graham 公式）
+
+        简化 Graham 公式:
+        V = EPS × (8.5 + 2g) × 4.4 / Y
+
+        其中：
+        - V = 内在价值
+        - EPS = 每股收益
+        - g = 过去3年平均净利润增长率（%）
+        - Y = 当前10年期国债收益率（默认3%）
+        - 8.5 = 基准PE（零增长公司的合理PE）
+
+        安全边际 = (V - 当前价格) / V × 100%
+
+        Returns:
+            安全边际（%），如无数据返回 None
+        """
+        eps = financial_data.get("eps")
+        net_profit_yoy = financial_data.get("net_profit_yoy")
+        pe = stock_data.get("latest_pe")
+
+        # 缺少关键数据，返回 None
+        if eps is None or eps <= 0 or pe is None or pe <= 0:
+            return None
+
+        # g = 净利润增长率（如有数据）
+        g = net_profit_yoy if net_profit_yoy is not None else 0
+
+        # 计算内在价值
+        # V = EPS × (8.5 + 2g) × 4.4 / Y
+        intrinsic_value = eps * (8.5 + 2 * g) * 4.4 / self.bond_yield
+
+        # 计算当前价格（P = EPS × PE）
+        current_price = eps * pe
+
+        # 计算安全边际
+        if intrinsic_value <= 0:
+            return None
+
+        safety_margin = (intrinsic_value - current_price) / intrinsic_value * 100
+
+        return safety_margin
+
+    def get_grade(self, score: float, safety_margin: Optional[float] = None) -> str:
+        """
+        根据得分和安全边际获取评级
+
+        评级标准：
+        - A+ (90+分，强烈推荐)：高ROE + 低估值 + 大安全边际
+        - A (80-89分，推荐)：基本面优秀 + 估值合理
+        - B (70-79分，关注)：基本面良好但估值偏高
+        - C (60-69分，观望)：部分指标不达标
+        - D (<60分，不推荐)：多项指标不达标
+        """
+        # 基础评级
+        if score >= 90:
+            base_grade = "A+"
+        elif score >= 80:
+            base_grade = "A"
+        elif score >= 70:
+            base_grade = "B"
+        elif score >= 60:
+            base_grade = "C"
+        else:
+            base_grade = "D"
+
+        # 安全边际加成（仅对 A 类及以下评级）
+        if safety_margin is not None and safety_margin > 30 and base_grade in ["A", "B"]:
+            # 安全边际 > 30%，可以提升一个等级（但不超过 A+）
+            if base_grade == "A" and score >= 85:
+                return "A+"
+
+        return base_grade
+
+    def get_score_breakdown(self, financial_data: Dict[str, Any], stock_data: Dict[str, Any]) -> Dict[str, float]:
+        """
+        获取得分明细（按维度）
+        """
+        return {
+            "盈利能力": self._score_profitability(financial_data),
+            "估值水平": self._score_valuation(financial_data, stock_data),
+            "财务健康": self._score_financial_health(financial_data),
+            "成长性": self._score_growth(financial_data),
+            "分红回报": self._score_dividend(financial_data, stock_data),
+        }
+
+    def generate_recommendation_reason(
+        self,
+        financial_data: Dict[str, Any],
+        stock_data: Dict[str, Any],
+        score: float,
+        grade: str
+    ) -> str:
+        """
+        生成推荐理由
+        """
+        reasons = []
+
+        # ROE 分析
+        roe = financial_data.get("roe")
+        if roe is not None:
+            if roe >= 25:
+                reasons.append("ROE优秀")
+            elif roe >= 20:
+                reasons.append("ROE良好")
+
+        # 负债率分析
+        debt_ratio = financial_data.get("debt_ratio")
+        if debt_ratio is not None:
+            if debt_ratio < 40:
+                reasons.append("低负债")
+            elif debt_ratio < 50:
+                reasons.append("负债适中")
+
+        # 估值分析
+        pe = stock_data.get("latest_pe")
+        if pe is not None and pe > 0:
+            if pe < 15:
+                reasons.append("估值偏低")
+            elif pe < 25:
+                reasons.append("估值合理")
+
+        # 成长性分析
+        revenue_yoy = financial_data.get("revenue_yoy")
+        net_profit_yoy = financial_data.get("net_profit_yoy")
+        if revenue_yoy is not None and revenue_yoy > 20:
+            reasons.append("营收高增长")
+        if net_profit_yoy is not None and net_profit_yoy > 20:
+            reasons.append("利润高增长")
+
         # 安全边际
-        if safety_margin >= 30:
-            reasons.append(f"安全边际{safety_margin:.0f}%充足")
-        elif safety_margin >= 15:
+        safety_margin = self.calculate_safety_margin(financial_data, stock_data)
+        if safety_margin is not None and safety_margin > 30:
             reasons.append(f"安全边际{safety_margin:.0f}%")
-        
-        if not reasons:
-            reasons.append("符合价值投资基本标准")
-        
-        return f"[{grade}] " + "，".join(reasons)
+
+        # 评级说明
+        grade_desc = {
+            "A+": "强烈推荐",
+            "A": "推荐",
+            "B": "关注",
+            "C": "观望",
+            "D": "不推荐"
+        }
+
+        reason_text = "、".join(reasons) if reasons else "符合基本标准"
+        return f"[{grade_desc.get(grade, '')}] {reason_text}"
+
+    def get_params_info(self) -> Dict[str, Any]:
+        """
+        获取策略参数说明
+        """
+        return {
+            "description": self.description,
+            "min_roe": {
+                "type": "float",
+                "default": self.min_roe,
+                "description": "最低ROE（%）"
+            },
+            "max_debt_ratio": {
+                "type": "float",
+                "default": self.max_debt_ratio,
+                "description": "最高负债率（%）"
+            },
+            "min_gross_margin": {
+                "type": "float",
+                "default": self.min_gross_margin,
+                "description": "最低毛利率（%）"
+            },
+            "min_safety_margin": {
+                "type": "float",
+                "default": 0,
+                "description": "最低安全边际（%）"
+            },
+            "grade": {
+                "type": "string",
+                "default": "C",
+                "description": "最低评级（A+/A/B/C/D）"
+            }
+        }

@@ -153,6 +153,19 @@ class StrategyBase(ABC):
             "max_debt_ratio": {"type": "float", "default": 60.0, "description": "最高负债率（%）"},
         }
 
+    def get_info(self) -> Dict[str, Any]:
+        """
+        获取策略完整信息
+
+        Returns:
+            策略信息字典
+        """
+        return {
+            "name": self.name,
+            "description": self.description,
+            "params": self.get_params_info()
+        }
+
     def analyze(
         self,
         stock_code: str,

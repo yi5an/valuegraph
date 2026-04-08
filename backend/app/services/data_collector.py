@@ -67,9 +67,13 @@ class AkShareCollector:
     @staticmethod
     def _safe_float(val) -> Optional[float]:
         """安全转换为 float（支持百分比字符串如 '24.64%'）"""
-        if val is None or val is False or (isinstance(val, float) and (pd.isna(val) or pd.isinf(val))):
+        if val is None or val is False:
             return None
         try:
+            if isinstance(val, float):
+                import math
+                if pd.isna(val) or math.isinf(val):
+                    return None
             if isinstance(val, str):
                 val = val.strip().replace('%', '').replace(',', '')
                 if not val or val == '-':
@@ -139,55 +143,55 @@ class AkShareCollector:
         stock_name = stock_code  # 默认使用代码作为名称
 
         try:
-
-            # 方案1: 使用 stock_main_stock_holder
+            # 方案1: 优先使用 stock_gdfx_top_10_em (数据质量更好)
             try:
-                df = ak.stock_main_stock_holder(stock=stock_code)
-                if df is not None and not df.empty:
-                    for idx, row in df.head(10).iterrows():
-                        top_holders.append({
-                            'rank': idx + 1,
-                            'holder_name': str(row.get('股东名称', '')),
-                            'hold_amount': sf(row.get('持股数量')),
-                            'hold_ratio': sf(row.get('持股比例')),
-                            'holder_type': str(row.get('股本性质', '')),
-                            'change': str(row.get('增减', '')),
-                        })
-                    # 获取报告日期
-                    if '截至日期' in df.columns and len(df) > 0:
-                        report_date = str(df.iloc[0].get('截至日期', report_date))
-                    logger.info(f"✅ 获取 {stock_code} 股东信息成功 (main_stock_holder)")
+                # 添加前缀
+                prefix = 'sh' if stock_code.startswith('6') else 'sz'
+                symbol = f"{prefix}{stock_code}"
+
+                # 尝试最近几个季度的日期
+                dates_to_try = ['20241231', '20240930', '20240630', '20240331']
+                for date in dates_to_try:
+                    try:
+                        df = ak.stock_gdfx_top_10_em(symbol=symbol, date=date)
+                        if df is not None and not df.empty:
+                            for idx, row in df.iterrows():
+                                top_holders.append({
+                                    'rank': int(row.get('名次', idx + 1)),
+                                    'holder_name': str(row.get('股东名称', '')),
+                                    'hold_amount': sf(row.get('持股数')),
+                                    'hold_ratio': sf(row.get('占总股本持股比例')),
+                                    'holder_type': str(row.get('股份类型', '')),
+                                    'change': str(row.get('增减', '')),
+                                })
+                            report_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
+                            logger.info(f"✅ 获取 {stock_code} 股东信息成功 (top_10_em, date={date})")
+                            break
+                    except:
+                        continue
             except Exception as e1:
-                logger.warning(f"stock_main_stock_holder 失败: {e1}")
+                logger.warning(f"stock_gdfx_top_10_em 失败: {e1}")
 
-                # 方案2: 使用 stock_gdfx_top_10_em (需要 sh/sz 前缀)
+            # 方案2: 如果方案1失败，使用 stock_main_stock_holder
+            if not top_holders:
                 try:
-                    # 添加前缀
-                    prefix = 'sh' if stock_code.startswith('6') else 'sz'
-                    symbol = f"{prefix}{stock_code}"
-
-                    # 尝试最近几个季度的日期
-                    dates_to_try = ['20241231', '20240930', '20240630', '20240331']
-                    for date in dates_to_try:
-                        try:
-                            df = ak.stock_gdfx_top_10_em(symbol=symbol, date=date)
-                            if df is not None and not df.empty:
-                                for idx, row in df.iterrows():
-                                    top_holders.append({
-                                        'rank': int(row.get('名次', idx + 1)),
-                                        'holder_name': str(row.get('股东名称', '')),
-                                        'hold_amount': sf(row.get('持股数')),
-                                        'hold_ratio': sf(row.get('占总股本持股比例')),
-                                        'holder_type': str(row.get('股份类型', '')),
-                                        'change': str(row.get('增减', '')),
-                                    })
-                                report_date = f"{date[:4]}-{date[4:6]}-{date[6:8]}"
-                                logger.info(f"✅ 获取 {stock_code} 股东信息成功 (top_10_em, date={date})")
-                                break
-                        except:
-                            continue
+                    df = ak.stock_main_stock_holder(stock=stock_code)
+                    if df is not None and not df.empty:
+                        for idx, row in df.head(10).iterrows():
+                            top_holders.append({
+                                'rank': idx + 1,
+                                'holder_name': str(row.get('股东名称', '')),
+                                'hold_amount': sf(row.get('持股数量')),
+                                'hold_ratio': sf(row.get('持股比例')),
+                                'holder_type': str(row.get('股本性质', '')),
+                                'change': str(row.get('增减', '')),
+                            })
+                        # 获取报告日期
+                        if '截至日期' in df.columns and len(df) > 0:
+                            report_date = str(df.iloc[0].get('截至日期', report_date))
+                        logger.info(f"✅ 获取 {stock_code} 股东信息成功 (main_stock_holder)")
                 except Exception as e2:
-                    logger.warning(f"stock_gdfx_top_10_em 失败: {e2}")
+                    logger.warning(f"stock_main_stock_holder 失败: {e2}")
 
             return {
                 'stock_code': stock_code,

@@ -62,9 +62,11 @@ class RecommendationService:
         # 使用策略引擎
         if strategy in STRATEGY_REGISTRY:
             strategy_cls = STRATEGY_REGISTRY[strategy]
-            strategy_instance = strategy_cls(self.db)
+            strategy_instance = strategy_cls()
             
-            results = strategy_instance.filter_stocks(
+            # 使用策略过滤股票
+            results = self._filter_with_strategy(
+                strategy_instance=strategy_instance,
                 market=market,
                 limit=limit,
                 min_roe=min_roe,
@@ -88,12 +90,13 @@ class RecommendationService:
                         financial = self.db.query(Financial).filter(
                             Financial.stock_code == stock_code
                         ).order_by(Financial.report_date.desc()).first()
-                        if financial and isinstance(strategy_instance, type):
-                            pass
-                        # 直接用策略方法
-                        if hasattr(strategy_instance, 'calc_safety_margin_from_pe'):
-                            sm = strategy_instance.calc_safety_margin_from_pe(financial, pe)
-                            item['safety_margin'] = sm
+                        if financial:
+                            sm = strategy_instance.calculate_safety_margin(
+                                {'eps': eps, 'net_profit_yoy': item.get('net_profit_growth')},
+                                {'latest_pe': pe}
+                            )
+                            if sm is not None:
+                                item['safety_margin'] = sm
             
             # 应用动态评分（A股）
             if market == "A" and results:
@@ -320,10 +323,135 @@ class RecommendationService:
             except Exception as e:
                 logger.warning(f"丰富理由生成失败 {code}: {e}")
 
+    def _filter_with_strategy(
+        self,
+        strategy_instance,
+        market: str,
+        limit: int,
+        min_roe: float,
+        max_debt_ratio: float,
+        industry: Optional[str],
+        min_gross_margin: Optional[float],
+        sort_by: str,
+        min_safety_margin: float,
+        min_grade: str,
+    ) -> List[Dict]:
+        """使用策略过滤股票"""
+        # 查询股票
+        query = self.db.query(Stock).filter(Stock.market == market)
+        if industry:
+            query = query.filter(Stock.industry == industry)
+        
+        stocks = query.all()
+        
+        results = []
+        for stock in stocks:
+            # 获取最新财报
+            financial = self.db.query(Financial).filter(
+                Financial.stock_code == stock.stock_code
+            ).order_by(Financial.report_date.desc()).first()
+            
+            if not financial:
+                continue
+            
+            # 构建数据字典
+            financial_data = {
+                'roe': financial.roe,
+                'gross_margin': financial.gross_margin,
+                'debt_ratio': financial.debt_ratio,
+                'operating_cash_flow': financial.operating_cash_flow,
+                'net_profit': financial.net_profit,
+                'revenue_yoy': financial.revenue_yoy,
+                'net_profit_yoy': financial.net_profit_yoy,
+                'eps': financial.eps,
+                'bvps': financial.bvps,
+            }
+            
+            stock_data = {
+                'latest_pe': stock.latest_pe,
+                'market_cap': stock.market_cap,
+            }
+            
+            # 使用策略进行筛选和评分
+            passed, reasons = strategy_instance.screen(financial_data)
+            
+            if not passed:
+                continue
+            
+            # 计算得分
+            score = strategy_instance.calculate_score(financial_data, stock_data)
+            
+            # 计算安全边际
+            safety_margin = strategy_instance.calculate_safety_margin(financial_data, stock_data)
+            
+            # 获取评级
+            grade = strategy_instance.get_grade(score, safety_margin)
+            
+            # 过滤评级
+            grade_order = ['D', 'C', 'B', 'A', 'A+']
+            if grade_order.index(grade) < grade_order.index(min_grade):
+                continue
+            
+            # 过滤安全边际
+            if safety_margin is not None and safety_margin < min_safety_margin:
+                continue
+            
+            # 获取得分明细
+            score_breakdown = strategy_instance.get_score_breakdown(financial_data, stock_data)
+            
+            # 生成推荐理由
+            reason = strategy_instance.generate_recommendation_reason(financial_data, stock_data, score, grade)
+            
+            results.append({
+                'stock_code': stock.stock_code,
+                'name': stock.name,
+                'market': stock.market,
+                'industry': stock.industry,
+                'market_cap': stock.market_cap,
+                'latest_roe': financial.roe,
+                'latest_pe': stock.latest_pe,
+                'debt_ratio': financial.debt_ratio,
+                'gross_margin': financial.gross_margin,
+                'net_profit_growth': financial.net_profit_yoy,
+                'revenue_yoy': financial.revenue_yoy,
+                'operating_cash_flow': financial.operating_cash_flow,
+                'eps': financial.eps,
+                'composite_score': round(score, 2),
+                'grade': grade,
+                'safety_margin': round(safety_margin, 2) if safety_margin else None,
+                'score_breakdown': score_breakdown,
+                'recommendation_reason': reason,
+            })
+        
+        # 排序
+        sort_field_map = {
+            'score': 'composite_score',
+            'roe': 'latest_roe',
+            'pe': 'latest_pe',
+            'market_cap': 'market_cap'
+        }
+        sort_field = sort_field_map.get(sort_by, 'composite_score')
+        reverse_sort = sort_by != 'pe'
+        results.sort(key=lambda x: x.get(sort_field) or 0, reverse=reverse_sort)
+        
+        # 限制数量
+        return results[:limit]
+    
     def get_available_strategies(self) -> List[Dict]:
-        """获取所有可用策略的信息"""
+        """获取所有可用策略的信息（实例方法）"""
         strategies = []
         for name, cls in STRATEGY_REGISTRY.items():
             instance = cls(self.db)
             strategies.append(instance.get_info())
         return strategies
+    
+    @staticmethod
+    def list_strategies() -> Dict:
+        """
+        获取可用策略列表（静态方法，无需数据库）
+        
+        Returns:
+            策略列表 {name: {description, params}}
+        """
+        from app.services.strategies import list_strategies
+        return list_strategies()
