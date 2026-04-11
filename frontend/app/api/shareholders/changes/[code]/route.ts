@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -11,7 +12,7 @@ export async function GET(
   const { code } = params;
 
   try {
-    const response = await fetch(`http://localhost:8001/api/shareholders/changes/${code}`, {
+    const response = await fetch(`${getBackendUrl()}/api/shareholders/changes/${code}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

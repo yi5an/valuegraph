@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -12,7 +13,7 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams;
   const depth = searchParams.get("depth") || "2";
   
-  const backendUrl = `http://localhost:8001/api/kg/graph/${encodeURIComponent(name)}?depth=${depth}`;
+  const backendUrl = `${getBackendUrl()}/api/kg/graph/${encodeURIComponent(name)}?depth=${depth}`;
 
   try {
     const response = await fetch(backendUrl, {

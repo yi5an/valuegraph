@@ -1,14 +1,15 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
  * API Route: /api/qa/ask
- * 代理到后端 http://localhost:8001/api/qa/ask
+ * 代理到后端
  */
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    const response = await fetch("http://localhost:8001/api/qa/ask", {
+    const response = await fetch(`${getBackendUrl()}/api/qa/ask`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

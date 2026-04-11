@@ -12,6 +12,15 @@ import {
   ShareholderChangeResponse
 } from "@/lib/types";
 
+
+/**
+ * 后端基础 URL（服务端代理专用，不暴露给客户端）
+ * 通过 BACKEND_URL 环境变量配置，默认 127.0.0.1:8000
+ */
+export function getBackendUrl(): string {
+  return process.env.BACKEND_URL || 'http://127.0.0.1:8000';
+}
+
 /**
  * API 响应包装格式（后端统一格式）
  */

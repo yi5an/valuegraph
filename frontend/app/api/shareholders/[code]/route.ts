@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -11,7 +12,7 @@ export async function GET(
   const { code } = params;
   
   // 构建后端 URL
-  const backendUrl = new URL(`http://localhost:8001/api/shareholders/${code}`);
+  const backendUrl = new URL(`${getBackendUrl()}/api/shareholders/${code}`);
 
   try {
     const response = await fetch(backendUrl.toString(), {

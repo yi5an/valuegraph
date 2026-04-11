@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   
   // 构建后端 URL
-  const backendUrl = new URL("http://localhost:8001/api/news/hot");
+  const backendUrl = new URL(`${getBackendUrl()}/api/news/hot`);
   
   // 转发所有查询参数
   searchParams.forEach((value, key) => {

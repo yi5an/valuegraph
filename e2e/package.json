@@ -1,0 +1,13 @@
+{
+  "name": "valuegraph-e2e",
+  "private": true,
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "playwright": "^1.50.0"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.59.1"
+  }
+}

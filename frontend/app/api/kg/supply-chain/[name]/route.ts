@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -12,7 +13,7 @@ export async function GET(
   const searchParams = request.nextUrl.searchParams;
   const direction = searchParams.get("direction") || "upstream";
   
-  const backendUrl = `http://localhost:8001/api/kg/supply_chain/${encodeURIComponent(name)}?direction=${direction}`;
+  const backendUrl = `${getBackendUrl()}/api/kg/supply_chain/${encodeURIComponent(name)}?direction=${direction}`;
 
   try {
     const response = await fetch(backendUrl, {

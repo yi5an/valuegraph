@@ -1,3 +1,4 @@
+import { getBackendUrl } from "@/lib/api";
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -9,7 +10,7 @@ export async function GET(
   { params }: { params: { name: string } }
 ) {
   const name = decodeURIComponent(params.name);
-  const backendUrl = `http://localhost:8001/api/kg/entity/${encodeURIComponent(name)}`;
+  const backendUrl = `${getBackendUrl()}/api/kg/entity/${encodeURIComponent(name)}`;
 
   try {
     const response = await fetch(backendUrl, {
